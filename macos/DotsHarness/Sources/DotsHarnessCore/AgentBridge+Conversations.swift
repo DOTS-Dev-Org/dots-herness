@@ -371,12 +371,17 @@ extension NativeAgentHost {
 
     public func newConversation() {
         clearFollowUpSuggestion()
-        guard hasRunnableAgentScope() else {
+        let projectlessScope = workspaceURL == nil && requestedWorkspacePath == nil
+        guard hasRunnableAgentScope() || projectlessScope else {
             status = AppCopy.text(requestedWorkspacePath == nil ? "agent.chooseWorkspaceToStart" : "agent.workspaceMissing")
             selectedID = nil
             return
         }
-        if let draft = conversations.first(where: Self.isEmptyDraft) {
+        // Usage telemetry and cache epochs outlive an empty transcript; reuse only a pristine draft.
+        if let draft = conversations.first(where: {
+            Self.isEmptyDraft($0) && $0.projectless == projectlessScope
+                && $0.cacheEpoch == nil && contextUsageEvents(in: $0.id).isEmpty
+        }) {
             selectedID = draft.id
             if let currentWorkspace = workspaceURL?.path, draft.cwd != currentWorkspace {
                 if let index = conversations.firstIndex(where: { $0.id == draft.id }) {
@@ -386,7 +391,7 @@ extension NativeAgentHost {
             }
             return
         }
-        let conversation = Conversation(cwd: workspaceURL?.path, projectless: workspaceURL == nil)
+        let conversation = Conversation(cwd: workspaceURL?.path, projectless: projectlessScope)
         conversations.insert(conversation, at: 0)
         selectedID = conversation.id
         persist()

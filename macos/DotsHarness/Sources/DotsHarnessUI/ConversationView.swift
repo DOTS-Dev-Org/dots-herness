@@ -26,6 +26,7 @@ struct ConversationView: View {
     @State private var olderPageAnchorID: String?
     @State private var olderPageLoadID: UUID?
     @State private var streamingScrollTask: Task<Void, Never>?
+    @State private var isFollowingTranscriptBottom = true
     /// Full composer height; a change means the transcript just lost or gained room.
     @State private var composerHeight: CGFloat = 0
     private static let messagePageSize = ConversationStore.defaultTranscriptPageSize
@@ -67,8 +68,17 @@ struct ConversationView: View {
                 isTerminalVisible = false
             }
         }
-        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
-            handleFileDrop(providers) { model.addDraftAttachments($0) }
+        .onDrop(of: [UTType.fileURL.identifier, UTType.image.identifier], isTargeted: $isDropTargeted) { providers in
+            handleAttachmentDrop(providers) { items in
+                model.addDraftAttachmentInputs(items.map { item in
+                    switch item {
+                    case .file(let url):
+                        .file(url)
+                    case .image(let data, let typeIdentifier):
+                        .imageData(data, typeIdentifier: typeIdentifier)
+                    }
+                })
+            }
         }
         .environment(\.openURL, OpenURLAction { url in
             if model.openFileLink(url) { return .handled }
@@ -155,13 +165,7 @@ struct ConversationView: View {
     private func conversationBody(_ conversation: Conversation) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                // Eager on purpose: LazyVStack here re-estimates variable row heights on every
-                // scrollTo and loops LazyLayoutCacheItem.AllItemsPhaseMutation forever, pinning
-                // the main thread at 100%. The transcript is paged, so it stays short.
-                VStack(alignment: .leading, spacing: 20) {
-                    let hasActiveToolActivity = conversation.running
-                        && conversation.messages.last?.kind == .tool
-                        && conversation.messages.last?.rawToolOutput == nil
+                VStack(alignment: .leading, spacing: 10) {
                     // Card sits under the latest system notice (stop event); hidden while running.
                     let cardAnchorID: String? = conversation.running ? nil
                         : conversation.continuation != nil
@@ -225,12 +229,7 @@ struct ConversationView: View {
                                 .id("continuation-\(conversation.id)")
                         }
                     }
-                    // Keep run status in transcript order: after the latest user or
-                    // tool message, immediately before any live assistant output.
-                    if conversation.running, conversation.runStartedAt != nil, !hasActiveToolActivity {
-                        liveActivityHeader(conversation)
-                            .id("run-status-\(conversation.id)")
-                    }
+                    // Keep live output after the latest user or tool message.
                     if conversation.running {
                         LiveReplyView(bridge: bridge, conversationID: conversation.id) {
                             scheduleStreamingScroll(using: proxy, conversation: conversation)
@@ -242,19 +241,23 @@ struct ConversationView: View {
                 .padding(.vertical, 28)
                 .id("transcript")
             }
+            .modifier(TranscriptScrollPhaseObserver(isFollowingBottom: $isFollowingTranscriptBottom))
             .softTopScrollEdgeEffect()
             .scrollToBottomButton {
+                isFollowingTranscriptBottom = true
                 withAnimation(.easeOut(duration: 0.18)) { proxy.scrollTo("transcript", anchor: .bottom) }
             }
             .id(conversation.id)
             .onAppear {
-                scrollToLast(using: proxy, conversation: conversation, animated: false)
+                isFollowingTranscriptBottom = true
+                scrollToLast(using: proxy, conversation: conversation, animated: false, force: true)
             }
             .onChange(of: conversation.id) { _, _ in
                 isLoadingOlderMessages = false
                 olderPageAnchorID = nil
                 olderPageLoadID = nil
-                scrollToLast(using: proxy, conversation: conversation, animated: false)
+                isFollowingTranscriptBottom = true
+                scrollToLast(using: proxy, conversation: conversation, animated: false, force: true)
             }
             .onChange(of: conversation.messages.count) { _, _ in
                 if let anchorID = olderPageAnchorID {
@@ -588,7 +591,8 @@ struct ConversationView: View {
                             Group {
                                 switch step.status {
                                 case "done": Image(systemName: "checkmark.circle.fill").foregroundStyle(.secondary)
-                                case "in_progress": ProgressView().controlSize(.mini)
+                                case "in_progress" where conversation.running: ProgressView().controlSize(.mini)
+                                case "in_progress": Image(systemName: "pause.circle").foregroundStyle(.secondary)
                                 default: Image(systemName: "circle.dashed").foregroundStyle(.tertiary)
                                 }
                             }
@@ -828,6 +832,7 @@ struct ConversationView: View {
                 if shouldShowChangedFilesOnMessage(message, in: conversation) {
                     changedFilesDisclosure(for: message)
                 }
+                followUpReplyButtons(message, in: conversation)
                 messageActions(message, in: conversation, hovering: hovering)
             }
             .padding(.vertical, 4)
@@ -836,6 +841,71 @@ struct ConversationView: View {
             if !isUser { Spacer(minLength: 80) }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+    }
+
+    private func followUpReplyButtons(_ message: ChatMessage, in conversation: Conversation) -> some View {
+        let suggestions = followUpReplies(for: message, in: conversation)
+        return Group {
+            if !suggestions.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    followUpReplyRow(suggestions)
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
+                            followUpReplyButton(suggestion, index: index)
+                        }
+                    }
+                }
+                .frame(maxWidth: 760, alignment: .leading)
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    private func followUpReplies(for message: ChatMessage, in conversation: Conversation) -> [String] {
+        guard message.kind == .assistant,
+              !message.streaming,
+              !replyIsStillRunning(message, in: conversation),
+              !isIntermediateReply(message, in: conversation),
+              conversation.messages.last(where: { $0.kind == .assistant })?.id == message.id,
+              bridge.followUpConversationID == conversation.id else { return [] }
+        return bridge.followUpSuggestions
+    }
+
+    private func followUpReplyRow(_ suggestions: [String]) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
+                followUpReplyButton(suggestion, index: index)
+            }
+        }
+    }
+
+    private func followUpReplyButton(_ suggestion: String, index: Int) -> some View {
+        Button {
+            _ = model.send(text: suggestion)
+        } label: {
+            HStack(alignment: .top, spacing: 7) {
+                Image(systemName: "arrow.turn.down.left")
+                    .font(.caption.weight(.semibold))
+                    .padding(.top, 2)
+                Text(suggestion)
+                    .font(.callout.weight(index == 0 ? .medium : .regular))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                index == 0 ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.07),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(index == 0 ? 0.12 : 0.08))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private func questionAnswerTranscript(for message: ChatMessage) -> String? {
@@ -1041,50 +1111,13 @@ struct ConversationView: View {
         ))
     }
 
-    private func liveActivityHeader(_ conversation: Conversation) -> some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let skills = bridge.activeUsedSkillIDs
-            let statusText = liveStatusText(
-                start: conversation.runStartedAt,
-                now: context.date,
-                toolsRunning: false
-            )
-            HStack(alignment: .center, spacing: 7) {
-                HerNessLoadingAnimation(size: 24)
-                Text(statusText)
-                if !skills.isEmpty {
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Text(AppCopy.format("conversation.using", skills.joined(separator: ", ")))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                Spacer(minLength: 0)
-            }
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(
-                skills.isEmpty
-                    ? AppCopy.format("conversation.workingFor", elapsedText(from: conversation.runStartedAt, now: context.date))
-                    : AppCopy.format(
-                        "conversation.workingUsing",
-                        elapsedText(from: conversation.runStartedAt, now: context.date),
-                        skills.joined(separator: ", ")
-                    )
-            )
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
-        }
-    }
-
     /// "2m 16s · 7.1K tokens · Running tools…"
     private func liveStatusText(start: Date?, now: Date, toolsRunning: Bool) -> String {
         var parts = [elapsedText(from: start, now: now)]
-        let tokens = bridge.activeRunUncachedInputTokenCount
+        let tokens = bridge.activeRunTokenCount
         if tokens > 0 {
             let count = compactTokens(tokens)
-            let displayedCount = bridge.activeRunUncachedInputIsApproximate ? "≈\(count)" : count
+            let displayedCount = bridge.activeRunTokenCountIncludesEstimate ? "≈\(count)" : count
             parts.append(AppCopy.format("conversation.tokensCount", displayedCount))
         }
         if toolsRunning { parts.append(AppCopy.text("conversation.runningTools")) }
@@ -1486,7 +1519,7 @@ struct ConversationView: View {
                     activityTerminalCard(item)
                 }
                 .foregroundStyle(.secondary)
-                .padding(.vertical, 6)
+                .padding(.vertical, 3)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -2021,30 +2054,19 @@ struct ConversationView: View {
     private func scrollToLast(
         using proxy: ScrollViewProxy,
         conversation: Conversation,
-        animated: Bool = true
+        animated: Bool = true,
+        force: Bool = false
     ) {
-        guard let last = conversation.messages.last else { return }
-        let targetID: String
-        if conversation.running,
-           bridge.liveReplyParagraphs(for: conversation.id)?.isEmpty == false {
-            targetID = "live-reply-bottom-\(conversation.id)"
-        } else if last.kind == .tool {
-            var start = conversation.messages.count - 1
-            while start > 0, conversation.messages[start - 1].kind == .tool {
-                start -= 1
-            }
-            targetID = "activity-\(conversation.messages[start].id)"
-        } else {
-            targetID = last.id
-        }
-        // dispatch next runloop so the transcript layout is committed before scrolling
+        let conversationID = conversation.id
+        // The full transcript includes rows after the last message (live status, prompts, and continuation cards).
+        // Targeting only the last message can leave those rows below the viewport.
         DispatchQueue.main.async {
             guard let selected = model.selected,
-                  selected.id == conversation.id,
+                  selected.id == conversationID,
                   selected.contentLoaded,
-                  selected.messages.last?.id == last.id else { return }
+                  force || isFollowingTranscriptBottom else { return }
             withAnimation(animated ? .easeOut(duration: 0.18) : nil) {
-                proxy.scrollTo(targetID, anchor: .bottom)
+                proxy.scrollTo("transcript", anchor: .bottom)
             }
         }
     }
@@ -2056,12 +2078,13 @@ struct ConversationView: View {
         using proxy: ScrollViewProxy,
         conversation: Conversation
     ) {
-        guard streamingScrollTask == nil else { return }
+        guard isFollowingTranscriptBottom, streamingScrollTask == nil else { return }
         let conversationID = conversation.id
         streamingScrollTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 120_000_000)
             defer { streamingScrollTask = nil }
             guard !Task.isCancelled,
+                  isFollowingTranscriptBottom,
                   model.selected?.id == conversationID,
                   let selected = model.selected,
                   selected.running else { return }
@@ -2403,6 +2426,30 @@ private struct HoverScope<Content: View>: View {
 
 /// The reply while the provider is still writing it. A view of its own, so a
 /// delta re-renders this bubble and not the transcript above it.
+private struct TranscriptScrollPhaseObserver: ViewModifier {
+    @Binding var isFollowingBottom: Bool
+
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.onScrollPhaseChange { _, phase, context in
+                switch phase {
+                case .tracking, .interacting, .decelerating:
+                    isFollowingBottom = false
+                case .idle:
+                    let distanceToBottom = context.geometry.contentSize.height - context.geometry.visibleRect.maxY
+                    isFollowingBottom = distanceToBottom <= 40
+                case .animating:
+                    break
+                @unknown default:
+                    break
+                }
+            }
+        } else {
+            content
+        }
+    }
+}
+
 private struct LiveReplyView: View {
     let bridge: AgentBridge
     let conversationID: String
@@ -2484,7 +2531,7 @@ private extension View {
     }
 }
 
-/// Precomputed previews are shown in a native popover after a short hover delay.
+/// Precomputed previews are shown in a native popover only after a deliberate hover delay.
 /// The card reads only the bounded diff stored with the message.
 private struct ChangedFileHoverPreview<Content: View>: View {
     let file: ChangedFile
@@ -2492,12 +2539,15 @@ private struct ChangedFileHoverPreview<Content: View>: View {
     @State private var isHoveringRow = false
     @State private var isHoveringCard = false
     @State private var isPresented = false
+    @State private var presentationUpdateToken = UUID()
+
+    private let rowHoverDelay: TimeInterval = 0.7
 
     var body: some View {
         content()
             .onHover { hovering in
                 isHoveringRow = hovering
-                schedulePresentationUpdate(delay: hovering ? 0.28 : 0.18)
+                schedulePresentationUpdate(delay: hovering ? rowHoverDelay : 0.18)
             }
             .popover(isPresented: $isPresented, arrowEdge: .leading) {
                 ChangedFileDiffPreviewCard(file: file)
@@ -2510,7 +2560,10 @@ private struct ChangedFileHoverPreview<Content: View>: View {
 
     private func schedulePresentationUpdate(delay: TimeInterval) {
         guard let preview = file.preview, !preview.isEmpty else { return }
+        let updateToken = UUID()
+        presentationUpdateToken = updateToken
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard presentationUpdateToken == updateToken else { return }
             isPresented = isHoveringRow || isHoveringCard
         }
     }

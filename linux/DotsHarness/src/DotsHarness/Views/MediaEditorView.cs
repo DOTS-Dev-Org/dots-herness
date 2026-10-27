@@ -4,6 +4,8 @@
 // MediaEditorState on macOS; the editing logic itself is the shared MediaEditorModel.
 
 using System.IO;
+using System.Threading;
+using System.Text.Encodings.Web;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -27,7 +29,7 @@ internal sealed class MediaEditorView : UserControl
     private static readonly string[][] ToolGroups =
     [
         ["move", "hand", "scale"], ["frame", "section", "slice"],
-        ["rectangle", "line", "arrow", "ellipse", "polygon", "star"], ["pen", "pencil"], ["text", "textPath"], ["comment"],
+        ["rectangle", "line", "arrow", "ellipse", "polygon", "star"], ["pen", "pencil", "marker"], ["text", "textPath"], ["comment"],
     ];
 
     private readonly AppModel _app;
@@ -57,6 +59,7 @@ internal sealed class MediaEditorView : UserControl
     private bool _spaceDown;
     private bool _promptRan;
     private string _initialPrompt;
+    private IReadOnlyList<MediaTemplate> _templates = [];
 
     public MediaEditorView(AppModel app, MediaProject project, string initialPrompt, Action close)
     {
@@ -154,6 +157,7 @@ internal sealed class MediaEditorView : UserControl
             _inspectorPane.IsVisible = e.NewSize.Width >= 640;
         };
         Loaded += (_, _) => _viewport.Focus();
+        _ = RefreshTemplateCatalogAsync();
     }
 
     public string ProjectId { get; }
@@ -166,6 +170,18 @@ internal sealed class MediaEditorView : UserControl
         if (_promptRan || string.IsNullOrWhiteSpace(_initialPrompt)) return;
         _promptRan = true;
         _m.RunAI(_initialPrompt, "design", _app.Router, _app.Paths, _app.Secrets);
+    }
+
+    private async Task RefreshTemplateCatalogAsync()
+    {
+        IReadOnlyList<MediaTemplate> templates;
+        try
+        {
+            var cachePath = System.IO.Path.Combine(_app.Paths.Root, "media-studio", "template-catalog.json");
+            templates = await MediaTemplateCatalogClient.LoadAsync(cachePath, _app.Localization.Culture.TwoLetterISOLanguageName);
+        }
+        catch { templates = []; }
+        Dispatcher.UIThread.Post(() => { _templates = templates; DrawInspector(); });
     }
 
     private void RunAI()
@@ -523,7 +539,7 @@ internal sealed class MediaEditorView : UserControl
             _inspector.Children.Add(expander);
         }
         Heading(_app.L("studio.templates"));
-        foreach (var template in MediaTemplate.All)
+        foreach (var template in _templates)
             _inspector.Children.Add(Ui.Button(template.Title, () => _m.AddCanvas(template.Canvas())));
     }
 
@@ -565,6 +581,33 @@ internal sealed class MediaEditorView : UserControl
 
         if (layer.Kind == "image")
         {
+            Heading(_app.L("studio.crop"));
+            void Crop(double? ratio)
+            {
+                _m.Checkpoint();
+                if (ratio is null) { layer.CropX = layer.CropY = layer.CropWidth = layer.CropHeight = null; }
+                else
+                {
+                    var size = layer.AssetName is { } name ? MediaRenderer.NaturalSize(_m.AssetPath(name)) : null;
+                    var sourceRatio = size is { } dimensions ? dimensions.Item1 / Math.Max(dimensions.Item2, 1) : ratio.Value;
+                    var normalized = ratio.Value / Math.Max(sourceRatio, 0.001);
+                    var width = normalized >= 1 ? 1 : normalized;
+                    var height = normalized >= 1 ? 1 / normalized : 1;
+                    layer.CropX = (1 - width) / 2; layer.CropY = (1 - height) / 2;
+                    layer.CropWidth = width; layer.CropHeight = height;
+                }
+                _m.Commit();
+            }
+            _inspector.Children.Add(Ui.Row(
+                Ui.Button(_app.L("studio.crop.free"), () => Crop(null)),
+                Ui.Button("1:1", () => Crop(1)),
+                Ui.Button("16:9", () => Crop(16.0 / 9.0)),
+                Ui.Button("9:16", () => Crop(9.0 / 16.0))));
+            _inspector.Children.Add(Grid2(
+                Number("X %", (layer.CropX ?? 0) * 100, value => { _m.Checkpoint(); layer.CropX = Math.Clamp(value / 100, 0, 0.95); layer.CropWidth = Math.Min(layer.CropWidth ?? 1, 1 - layer.CropX.Value); _m.Commit(); }),
+                Number("Y %", (layer.CropY ?? 0) * 100, value => { _m.Checkpoint(); layer.CropY = Math.Clamp(value / 100, 0, 0.95); layer.CropHeight = Math.Min(layer.CropHeight ?? 1, 1 - layer.CropY.Value); _m.Commit(); }),
+                Number("W %", (layer.CropWidth ?? 1) * 100, value => { _m.Checkpoint(); layer.CropWidth = Math.Clamp(value / 100, 0.05, 1 - (layer.CropX ?? 0)); _m.Commit(); }),
+                Number("H %", (layer.CropHeight ?? 1) * 100, value => { _m.Checkpoint(); layer.CropHeight = Math.Clamp(value / 100, 0.05, 1 - (layer.CropY ?? 0)); _m.Commit(); })));
             Heading(_app.L("studio.imagePrompt"));
             _inspector.Children.Add(TextField(layer.Prompt ?? "", v => layer.Prompt = v, multiline: true));
             var generate = Ui.Button(_app.L("studio.generateImage"),
@@ -572,6 +615,8 @@ internal sealed class MediaEditorView : UserControl
             generate.IsEnabled = !_m.AiBusy && !string.IsNullOrWhiteSpace(layer.Prompt);
             _inspector.Children.Add(generate);
         }
+        if (layer.Kind == "video" && layer.AssetName is { } videoAsset)
+            VideoTrimInspector(canvas, layer, videoAsset);
         if (layer.AssetName is { } asset)
             _inspector.Children.Add(Ui.Button(_app.L("media.showInFinder"), () => Ui.Reveal(_m.AssetPath(asset))));
 
@@ -583,6 +628,60 @@ internal sealed class MediaEditorView : UserControl
             Ui.Button(_app.L("studio.duplicate"), _m.DuplicateSelectedLayer),
             Ui.Button(_app.L("common.delete"), _m.DeleteSelectedLayer)));
         _inspector.Children.Add(Ui.Row(Ui.Button("PNG", () => ExportLayer(layer))));
+    }
+
+    private void VideoTrimInspector(MediaCanvas canvas, MediaLayer layer, string assetName)
+    {
+        Heading(_app.L("studio.ai.kind.video"));
+        var source = _m.AssetPath(assetName);
+        var html = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"herness-video-{Guid.NewGuid():N}.html");
+        var videoUri = HtmlEncoder.Default.Encode(new Uri(source).AbsoluteUri);
+        File.WriteAllText(html, $"<!doctype html><html><body style='margin:0;background:#10131c'><video src=\"{videoUri}\" controls playsinline style='width:100%;height:200px;object-fit:contain'></video></body></html>");
+        var preview = new NativeWebView { Height = 210 };
+        preview.Navigate(new Uri(html));
+        _inspector.Children.Add(preview);
+        var inPoint = new TextBox { Text = "0", Width = 72, Watermark = _app.L("studio.video.markIn") };
+        var outPoint = new TextBox { Text = "", Width = 72, Watermark = _app.L("studio.video.markOut") };
+        var status = Ui.Text(_app.L("studio.video.enterRange"), 11, secondary: true, wrap: true);
+        var progress = new ProgressBar { Height = 5, Minimum = 0, Maximum = 1, IsVisible = false };
+        CancellationTokenSource? cancellation = null;
+        var cancel = Ui.Button(_app.L("common.cancel"), () => cancellation?.Cancel());
+        cancel.IsEnabled = false;
+        _inspector.Children.Add(Ui.Row(inPoint, outPoint));
+        _inspector.Children.Add(Ui.Row(Ui.Button(_app.L("studio.video.trimExport"), async () =>
+        {
+            if (!double.TryParse(inPoint.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var start)
+                || !double.TryParse(outPoint.Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var end)
+                || end <= start)
+            { status.Text = _app.L("studio.video.trimRangeInvalid"); return; }
+            cancellation?.Dispose();
+            cancellation = new CancellationTokenSource();
+            var token = cancellation.Token;
+            var temp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"herness-trim-{Guid.NewGuid():N}.mp4");
+            progress.IsVisible = true; progress.Value = 0; cancel.IsEnabled = true;
+            status.Text = _app.L("studio.video.exporting");
+            try
+            {
+                var reporter = new Progress<double>(value => progress.Value = value);
+                await MediaVideoTools.TrimMp4Async(source, temp, start, end, reporter, token);
+                token.ThrowIfCancellationRequested();
+                var newAsset = _m.Store.ImportAsset(temp, _m.Project.Id);
+                _m.Checkpoint();
+                _m.UpdateLayer(layer.Id, canvas.Id, current => current.AssetName = newAsset);
+                _m.Commit();
+                status.Text = _app.L("studio.video.trimAdded");
+                Refresh();
+            }
+            catch (OperationCanceledException) { status.Text = _app.L("studio.video.trimCancelled"); }
+            catch (Exception error) { status.Text = error.Message; }
+            finally
+            {
+                cancellation?.Dispose(); cancellation = null; cancel.IsEnabled = false; progress.IsVisible = false;
+                try { if (File.Exists(temp)) File.Delete(temp); } catch (IOException) { }
+            }
+        }, primary: true), cancel));
+        _inspector.Children.Add(progress);
+        _inspector.Children.Add(status);
     }
 
     // Pointer
@@ -668,6 +767,7 @@ internal sealed class MediaEditorView : UserControl
                 _drag = DragKind.Scale;
                 break;
             case "pencil":
+            case "marker":
                 _stroke.Clear();
                 _stroke.Add(point);
                 _drag = DragKind.Pencil;
@@ -794,7 +894,8 @@ internal sealed class MediaEditorView : UserControl
                 _m.Commit();
                 break;
             case DragKind.Pencil:
-                _m.AddPath(_stroke.ToList(), MediaTools.Title("pencil"));
+                if (_m.Tool == "marker") _m.AddPath(_stroke.ToList(), MediaTools.Title("marker"), colorHex: "#FFD400", strokeWidth: 24, opacity: 0.42);
+                else _m.AddPath(_stroke.ToList(), MediaTools.Title("pencil"));
                 _stroke.Clear();
                 _m.Tool = "move";
                 Refresh();

@@ -794,6 +794,80 @@ public sealed class AgentBridgeTests
     private static NativeGatewayResponse SuggestionReply() => new(200, "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"Continue.\"}}]}"u8.ToArray());
 
     [Fact]
+    public async Task NewConversationDoesNotReuseBlankDraftWithCacheHistory()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
+        var workspace = Path.Combine(root, "workspace");
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            var paths = PathsFor(root);
+            using var router = new RouterController(paths);
+            var bridge = new AgentBridge(router, paths);
+            await bridge.StartAsync(workspace);
+            await bridge.NewConversationAsync(workspace);
+            var old = Assert.IsType<Conversation>(bridge.Selected);
+            var session = new NativeCacheSession();
+            session.AppendEvent(new NativeCacheUsageEvent(
+                "old-cache-event", DateTimeOffset.UtcNow, "scope", new NativeUsage(40_000, 1, 32_000),
+                new NativeCacheReuseEvidence(null, "prefix", "settings", "eligible", "measured", "test")));
+            old.CacheSession = session;
+
+            await bridge.NewConversationAsync(workspace);
+
+            var fresh = Assert.IsType<Conversation>(bridge.Selected);
+            Assert.NotEqual(old.Id, fresh.Id);
+            Assert.Null(fresh.CacheSession);
+            Assert.Contains(old, bridge.Conversations);
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AppModelNewConversationUsesRecentProjectUnlessProjectlessWasChosen()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"DotsHarnessTests-{Guid.NewGuid()}");
+        var first = Path.Combine(root, "first");
+        var recent = Path.Combine(root, "recent");
+        Directory.CreateDirectory(first);
+        Directory.CreateDirectory(recent);
+        var model = new AppModel(PathsFor(root));
+        model.Bridge.SeedProjectRules = false;
+        try
+        {
+            await model.SetWorkspaceAsync(first);
+            await model.NewConversationAsync();
+            Assert.Equal(Path.GetFullPath(first), model.Bridge.Selected?.Cwd);
+            Assert.False(model.Bridge.Selected?.Projectless ?? true);
+
+            await model.SetWorkspaceAsync(recent);
+            await model.NewConversationAsync();
+            Assert.Equal(Path.GetFullPath(recent), model.Bridge.Selected?.Cwd);
+
+            await model.SetWorkspaceAsync("");
+            await model.NewConversationAsync();
+            Assert.Equal(Path.GetFullPath(recent), model.WorkspacePath);
+            Assert.Equal(Path.GetFullPath(recent), model.Bridge.Selected?.Cwd);
+
+            await model.SelectNoProjectAsync();
+            Assert.True(model.Bridge.Selected?.Projectless ?? false);
+            Assert.Null(model.Bridge.Selected?.Cwd);
+            await model.NewConversationAsync();
+            Assert.True(model.Bridge.Selected?.Projectless ?? false);
+            Assert.Null(model.Bridge.Selected?.Cwd);
+        }
+        finally
+        {
+            model.Bridge.Stop();
+            model.Router.Dispose();
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void FirstUserMessageBecomesConversationTitle()
     {
         var conversation = new Conversation { Title = "New conversation", Blank = true };

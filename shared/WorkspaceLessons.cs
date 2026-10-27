@@ -194,6 +194,9 @@ public static class WorkspaceLessons
     public static bool Pin(string? workspace, string id, string? userRoot = null) => MutateLesson(workspace, id, userRoot, lesson =>
         lesson with { Sources = lesson.Sources.Append("user:" + id).Distinct(StringComparer.Ordinal).OrderBy(item => item, StringComparer.Ordinal).ToList() });
 
+    public static bool DismissReviewPrompt(string? workspace, string id, string? userRoot = null) =>
+        MutateLesson(workspace, id, userRoot, lesson => lesson with { ReviewPromptDismissed = true });
+
     public static bool Forget(string? workspace, string id, string? userRoot = null)
     {
         var path = StorePath(workspace, userRoot);

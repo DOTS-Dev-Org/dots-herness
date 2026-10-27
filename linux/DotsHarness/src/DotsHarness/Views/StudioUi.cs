@@ -367,7 +367,25 @@ internal static class MediaRenderer
     private static Control Picture(MediaLayer layer, Bitmap? image, bool video)
     {
         var grid = new Grid();
-        if (image is not null) grid.Children.Add(new Image { Source = image, Stretch = Stretch.UniformToFill });
+        if (image is not null)
+        {
+            var cropX = Math.Clamp(layer.CropX ?? 0, 0, 0.999);
+            var cropY = Math.Clamp(layer.CropY ?? 0, 0, 0.999);
+            var cropWidth = Math.Clamp(layer.CropWidth ?? 1, 0.001, 1 - cropX);
+            var cropHeight = Math.Clamp(layer.CropHeight ?? 1, 0.001, 1 - cropY);
+            var scale = Math.Max(layer.Width / (image.Size.Width * cropWidth), layer.Height / (image.Size.Height * cropHeight));
+            var cropped = layer.CropX is not null || layer.CropY is not null || layer.CropWidth is not null || layer.CropHeight is not null;
+            var picture = new Image { Source = image, Stretch = cropped ? Stretch.None : Stretch.UniformToFill };
+            if (cropped)
+            {
+                picture.Width = image.Size.Width * scale;
+                picture.Height = image.Size.Height * scale;
+                picture.HorizontalAlignment = HorizontalAlignment.Left;
+                picture.VerticalAlignment = VerticalAlignment.Top;
+                picture.RenderTransform = new TranslateTransform(-cropX * picture.Width, -cropY * picture.Height);
+            }
+            grid.Children.Add(picture);
+        }
         // ponytail: videos show their tint, not a poster frame.
         if (image is null || video)
         {

@@ -1,5 +1,6 @@
 package com.dots.herness.mobile
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -7,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.speech.RecognizerIntent
 import org.json.JSONObject
 import androidx.activity.ComponentActivity
@@ -157,6 +159,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 
+private data class PendingAttentionNotification(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val detail: String,
+)
+
 @Composable
 private fun MobileProviderBrandMark(providerId: String, modifier: Modifier = Modifier.size(22.dp)) {
     val image = when (providerId.lowercase()) {
@@ -280,7 +289,7 @@ private fun HerNessApp(
             { PHONE_AGENT_SYSTEM_PROMPT },
             stateStore,
             { chatGPTOAuth.accessToken },
-            { chatGPTOAuth.accountId },
+            { chatGPTOAuth.roomiestAccountId() },
             { AgentTools.snapshot(client.workspaceRoot()) },
             git,
             context.applicationContext,
@@ -312,7 +321,7 @@ private fun HerNessApp(
                 { PHONE_AGENT_SYSTEM_PROMPT },
                 stateStore,
                 oauthToken = { chatGPTOAuth.accessToken },
-                sessionAccountId = { chatGPTOAuth.accountId },
+                sessionAccountId = { chatGPTOAuth.roomiestAccountId() },
                 workspaceSnapshotProvider = { AgentTools.snapshot(loopRoot) },
                 gitClient = loopGit,
                 providerApiKey = { provider -> client.phoneSecret("provider.$provider") },
@@ -801,6 +810,31 @@ private fun WorkspaceShell(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val notificationInbox = remember(context) { MobileNotificationInbox.shared(context.applicationContext) }
+    var pendingAttentionNotification by remember { mutableStateOf<PendingAttentionNotification?>(null) }
+    val attentionNotificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val pending = pendingAttentionNotification
+        if (granted && pending != null) {
+            LoopScheduler.notifyAttention(context, pending.id, pending.title, pending.subtitle, pending.detail)
+        }
+        pendingAttentionNotification = null
+    }
+    fun postAttentionNotification(notificationID: String, title: String, subtitle: String, detail: String) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            val preferences = context.getSharedPreferences("herness.notifications", Context.MODE_PRIVATE)
+            val alreadyAsked = preferences.getBoolean("attention_permission_requested", false)
+                || preferences.getBoolean("question_permission_requested", false)
+            if (alreadyAsked) return
+            preferences.edit().putBoolean("attention_permission_requested", true).apply()
+            pendingAttentionNotification = PendingAttentionNotification(notificationID, title, subtitle, detail)
+            attentionNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            LoopScheduler.notifyAttention(context, notificationID, title, subtitle, detail)
+        }
+    }
     val personalMemoryRoot = remember(context) { java.io.File(context.filesDir, "herness-memory") }
     val drawerWidth = minOf(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp * 0.64f, 260.dp)
     var observedRunState by remember { mutableStateOf(agent.running) }
@@ -809,32 +843,40 @@ private fun WorkspaceShell(
             val failed = agent.runtimeState == "failed"
             if (failed || agent.runtimeState == "completed") {
                 val turn = agent.transcript.lastOrNull { it.role == if (failed) "error" else "assistant" }
-                if (turn != null) notificationInbox.append(
-                    kind = if (failed) "failed" else "completed",
-                    title = context.getString(if (failed) R.string.notifications_operation_failed else R.string.notifications_response_ready),
-                    subtitle = client.selectedProject.name,
-                    detail = turn.text,
-                    conversationId = agent.activeConversationId,
-                    projectId = agent.projectId,
-                    conversationPath = client.workspaceRoot().absolutePath,
-                    isRead = tab == 0,
-                )
+                if (turn != null) {
+                    val title = context.getString(if (failed) R.string.notifications_operation_failed else R.string.notifications_response_ready)
+                    notificationInbox.append(
+                        kind = if (failed) "failed" else "completed",
+                        title = title,
+                        subtitle = client.selectedProject.name,
+                        detail = turn.text,
+                        conversationId = agent.activeConversationId,
+                        projectId = agent.projectId,
+                        conversationPath = client.workspaceRoot().absolutePath,
+                        isRead = false,
+                    )
+                    postAttentionNotification(turn.id, title, client.selectedProject.name, turn.text)
+                }
             }
         }
         observedRunState = agent.running
     }
     LaunchedEffect(agent.questionRequest?.id) {
         val question = agent.questionRequest ?: return@LaunchedEffect
+        val detail = question.askUserQuestions.joinToString(" · ") { it.prompt }.ifBlank { question.question }
+        val title = context.getString(R.string.notifications_question)
+        val subtitle = client.selectedProject.name
         notificationInbox.append(
             kind = "question",
-            title = context.getString(R.string.notifications_question),
-            subtitle = client.selectedProject.name,
-            detail = question.askUserQuestions.joinToString(" · ") { it.prompt }.ifBlank { question.question },
+            title = title,
+            subtitle = subtitle,
+            detail = detail,
             conversationId = agent.activeConversationId,
             projectId = agent.projectId,
             conversationPath = client.workspaceRoot().absolutePath,
-            isRead = tab == 0,
+            isRead = false,
         )
+        postAttentionNotification(question.id, title, subtitle, detail)
     }
     LaunchedEffect(agent.approvalRequest?.id) {
         val approval = agent.approvalRequest ?: return@LaunchedEffect
@@ -1104,12 +1146,22 @@ private fun WorkspaceShell(
                     }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         when (tab) {
-                            0 -> AgentTab(agent, client) {
-                                if (!importingFolder && client.selectedProjectLocationAvailable.not()) {
-                                    relocatingMissingProject = true
-                                    folderPicker.launch(null)
-                                }
-                            }
+                            0 -> AgentTab(
+                                agent = agent,
+                                client = client,
+                                onLocateMissing = {
+                                    if (!importingFolder && !client.selectedProjectLocationAvailable) {
+                                        relocatingMissingProject = true
+                                        folderPicker.launch(null)
+                                    }
+                                },
+                                canSwitchProject = !agent.running && loops.running == null && !importingFolder,
+                                onProjectSelected = { id ->
+                                    if (!agent.running && loops.running == null && !importingFolder && (client.selectedProjectId == id || client.selectProject(id))) {
+                                        agent.selectProject(id)
+                                    }
+                                },
+                            )
                             1 -> FilesScreen(
                                 client.selectedProjectId,
                                 { client.workspaceRoot() },
@@ -1124,14 +1176,6 @@ private fun WorkspaceShell(
                             8 -> MobileBotsScreen(client, agent) { tab = 0 }
                             9 -> MobileMarketplaceScreen(client, agent) { tab = 0 }
                             else -> SettingsScreen(client, agent, plugins, mcp, loops, github, chatGPT, legal, selectedLanguage, onLanguageChange, isDarkTheme, onThemeToggle, confirmBeforeExit, onConfirmBeforeExitChange, ::requestExit)
-                        }
-                        if (tab == 0) {
-                            Box(
-                                Modifier.align(Alignment.TopCenter)
-                                    .fillMaxWidth()
-                                    .height(1.dp)
-                                    .background(MaterialTheme.colorScheme.background),
-                            )
                         }
                     }
                 }
@@ -1334,6 +1378,8 @@ private fun FoldableProjectPicker(
     }
 }
 
+private data class MobileSidebarProjectRow(val project: MobileProject, val groupTitle: String?)
+
 @Composable
 private fun FoldableSidebar(
     modifier: Modifier,
@@ -1354,6 +1400,29 @@ private fun FoldableSidebar(
     var expandedProjectId by remember(client.selectedProjectId) { mutableStateOf<String?>(client.selectedProjectId) }
     var isAddingProject by remember { mutableStateOf(false) }
     var newProjectName by remember { mutableStateOf("") }
+    var organizationMenuExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val projectPreferences = remember(context) { context.getSharedPreferences("herness.preferences", Context.MODE_PRIVATE) }
+    var projectGrouping by remember(projectPreferences) {
+        mutableStateOf(projectPreferences.getString("mobile.sidebar.projectGrouping", "source") ?: "source")
+    }
+    var projectSort by remember(projectPreferences) {
+        mutableStateOf(projectPreferences.getString("mobile.sidebar.projectSort", "default") ?: "default")
+    }
+    val projectGroups = remember(client.projects, projectGrouping, projectSort) {
+        organizeMobileProjects(client.projects, groupBySource = projectGrouping == "source", sortByName = projectSort == "name")
+    }
+    val localWorkspaceLabel = stringResource(R.string.mobile_workspace_local)
+    val projectRows = projectGroups.flatMap { group ->
+        group.projects.mapIndexed { index, project ->
+            val title = if (projectGrouping != "source" || index > 0) null else when (group.key) {
+                "local" -> localWorkspaceLabel
+                "github" -> "GitHub"
+                else -> "Desktop"
+            }
+            MobileSidebarProjectRow(project, title)
+        }
+    }
     val navItems = foldableNavigationItems()
     val untitledConversation = stringResource(R.string.mobile_agent_new_conversation)
     val notificationsLabel = if (notificationInbox.unreadCount > 0) {
@@ -1395,6 +1464,61 @@ private fun FoldableSidebar(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp)) {
             Text("Projects", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.weight(1f))
+            IconButton(onClick = { organizationMenuExpanded = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.sidebar_group_by))
+            }
+            DropdownMenu(expanded = organizationMenuExpanded, onDismissRequest = { organizationMenuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.sidebar_group_by), style = MaterialTheme.typography.labelLarge) },
+                    onClick = {},
+                    enabled = false,
+                )
+                DropdownMenuItem(
+                    text = { Text((if (projectGrouping == "source") "✓ " else "") + stringResource(R.string.market_field_source)) },
+                    onClick = {
+                        projectGrouping = "source"
+                        projectPreferences.edit().putString("mobile.sidebar.projectGrouping", projectGrouping).apply()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text((if (projectGrouping == "none") "✓ " else "") + stringResource(R.string.sidebar_project_grouping_none)) },
+                    onClick = {
+                        projectGrouping = "none"
+                        projectPreferences.edit().putString("mobile.sidebar.projectGrouping", projectGrouping).apply()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.sidebar_sort_projects_by), style = MaterialTheme.typography.labelLarge) },
+                    onClick = {},
+                    enabled = false,
+                )
+                DropdownMenuItem(
+                    text = { Text((if (projectSort == "default") "✓ " else "") + stringResource(R.string.sidebar_project_sort_default)) },
+                    onClick = {
+                        projectSort = "default"
+                        projectPreferences.edit().putString("mobile.sidebar.projectSort", projectSort).apply()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text((if (projectSort == "name") "✓ " else "") + stringResource(R.string.studio_home_sort_name)) },
+                    onClick = {
+                        projectSort = "name"
+                        projectPreferences.edit().putString("mobile.sidebar.projectSort", projectSort).apply()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.model_picker_reset)) },
+                    onClick = {
+                        projectGrouping = "source"
+                        projectSort = "default"
+                        projectPreferences.edit()
+                            .putString("mobile.sidebar.projectGrouping", projectGrouping)
+                            .putString("mobile.sidebar.projectSort", projectSort)
+                            .apply()
+                        organizationMenuExpanded = false
+                    },
+                )
+            }
             IconButton(
                 onClick = { isAddingProject = !isAddingProject },
                 enabled = !agent.running && loops.running == null && !importingFolder,
@@ -1433,10 +1557,19 @@ private fun FoldableSidebar(
         }
 
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            items(client.projects, key = { it.id }) { project ->
+            items(projectRows, key = { it.project.id }) { row ->
+                val project = row.project
                 val isSelected = project.id == client.selectedProjectId
                 val isExpanded = expandedProjectId == project.id
                 Column {
+                    row.groupTitle?.let { title ->
+                        Text(
+                            title,
+                            modifier = Modifier.padding(start = 10.dp, top = 8.dp, bottom = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Surface(
                         modifier = Modifier.fillMaxWidth().clickable(
                             enabled = !agent.running && loops.running == null && !importingFolder,
@@ -1659,11 +1792,18 @@ private fun FoldableWorkspaceContent(
                     maxLines = 1,
                     style = MaterialTheme.typography.titleMedium,
                 )
-                HorizontalDivider()
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (tab) {
-                    0 -> AgentTab(agent, client, onEnsureProjectLocation)
+                    0 -> AgentTab(
+                        agent = agent,
+                        client = client,
+                        onLocateMissing = onEnsureProjectLocation,
+                        canSwitchProject = !agent.running && loops.running == null && !isImporting,
+                        onProjectSelected = { id ->
+                            if (!agent.running && loops.running == null && (client.selectedProjectId == id || client.selectProject(id))) agent.selectProject(id)
+                        },
+                    )
                     1 -> FilesScreen(client.selectedProjectId, { client.workspaceRoot() }, onImportFolder, isImporting)
                     2 -> TerminalTab(shell, client)
                     3 -> PreviewScreen(client)
@@ -1975,8 +2115,14 @@ private fun FilesScreen(projectID: String, root: () -> java.io.File, onImportFol
  * The Agent tab runs entirely through the on-device runtime.
  */
 @Composable
-private fun AgentTab(agent: MobileAgent, client: RemoteClient, onLocateMissing: () -> Unit) {
-    LocalAgentScreen(agent, client, onLocateMissing)
+private fun AgentTab(
+    agent: MobileAgent,
+    client: RemoteClient,
+    onLocateMissing: () -> Unit,
+    canSwitchProject: Boolean,
+    onProjectSelected: (String) -> Unit,
+) {
+    LocalAgentScreen(agent, client, onLocateMissing, canSwitchProject, onProjectSelected)
 }
 
 private data class MobileWelcomeCard(
@@ -2078,7 +2224,13 @@ private fun HerNessLoadingAnimation(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateMissing: () -> Unit) {
+private fun LocalAgentScreen(
+    agent: MobileAgent,
+    client: RemoteClient,
+    onLocateMissing: () -> Unit,
+    canSwitchProject: Boolean,
+    onProjectSelected: (String) -> Unit,
+) {
     var prompt by remember { mutableStateOf("") }
     var draftAttachments by remember { mutableStateOf<List<MobileAttachment>>(emptyList()) }
     var questionAnswer by remember { mutableStateOf("") }
@@ -2258,17 +2410,6 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                 }
             }
         }
-        if (!client.selectedProjectLocationAvailable && !agent.isNoProjectMode) {
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            ) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(stringResource(R.string.project_missing_read_only), style = MaterialTheme.typography.bodySmall)
-                    Button(onClick = onLocateMissing) { Text(stringResource(R.string.project_missing_locate)) }
-                }
-            }
-        }
         if (agent.requiresToolOutcomeRecovery) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(agent.toolOutcomeRecoveryMessage ?: "Çalışma kesintiye uğradı", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
@@ -2357,7 +2498,7 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                         "tool" -> {
                             var expanded by remember(turn.id) { mutableStateOf(false) }
                             Card(
-                                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                Modifier.fillMaxWidth().padding(vertical = 2.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             ) {
                                 Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
@@ -2395,7 +2536,7 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                                 }
                             }
                         }
-                        else -> Column(Modifier.padding(10.dp)) {
+                        else -> Column(Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
                             Text(
                                 when (turn.role) {
                                     "user" -> stringResource(R.string.mobile_agent_user)
@@ -2407,6 +2548,37 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                                 color = when (turn.role) { "error" -> MaterialTheme.colorScheme.error; "assistant" -> MaterialTheme.colorScheme.primary; "system" -> MaterialTheme.colorScheme.secondary; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                             )
                             MarkdownBody(turn.text)
+                            val latestAssistantID = agent.transcript.lastOrNull { it.role == "assistant" }?.id
+                            val latestAssistantIndex = agent.transcript.indexOfLast { it.role == "assistant" }
+                            val latestUserIndex = agent.transcript.indexOfLast { it.role == "user" }
+                            val replies = MobileQuickReplySuggestions.choices(
+                                turn.text,
+                                stringResource(R.string.agent_continue),
+                                stringResource(R.string.permission_reject),
+                            )
+                            if (turn.role == "assistant" && turn.id == latestAssistantID && latestAssistantIndex > latestUserIndex
+                                && !agent.running && replies.isNotEmpty()) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(top = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    replies.forEachIndexed { index, reply ->
+                                        if (index == 0) {
+                                            Button(
+                                                onClick = { agent.send(reply.text, mode = "queue", planMode = agent.planMode) },
+                                                modifier = Modifier.weight(1f),
+                                                enabled = client.selectedProjectLocationAvailable || agent.isNoProjectMode,
+                                            ) { Text(reply.text, maxLines = 3) }
+                                        } else {
+                                            OutlinedButton(
+                                                onClick = { agent.send(reply.text, mode = "queue", planMode = agent.planMode) },
+                                                modifier = Modifier.weight(1f),
+                                                enabled = client.selectedProjectLocationAvailable || agent.isNoProjectMode,
+                                            ) { Text(reply.text, maxLines = 3) }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -2539,6 +2711,13 @@ private fun LocalAgentScreen(agent: MobileAgent, client: RemoteClient, onLocateM
                 }
             }
         }
+        MobileProjectBranchBar(
+            client = client,
+            agent = agent,
+            canSwitchProject = canSwitchProject,
+            onProjectSelected = onProjectSelected,
+            onLocateMissing = onLocateMissing,
+        )
         Surface(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             shape = RoundedCornerShape(18.dp),

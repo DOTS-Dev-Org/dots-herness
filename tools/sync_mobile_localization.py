@@ -259,6 +259,7 @@ MOBILE_KEYS.update({
     "vault.section.project", "vault.section.profile",
     "project.missing.title", "project.missing.message", "project.missing.locate", "project.missing.readOnly",
     "sidebar.recent", "sidebar.noChats", "sidebar.noRecent", "sidebar.archiveChat",
+    "sidebar.groupBy", "sidebar.projectGroupingNone", "sidebar.sortProjectsBy", "sidebar.projectSortDefault", "modelPicker.reset",
     "archive.title", "archive.empty", "archive.restore",
     "common.cancel", "common.connect", "common.delete", "common.done", "common.download", "common.refresh", "common.remove", "common.save", "common.start", "common.stop",
     "settings.title", "settings.language", "settings.confirmBeforeExit", "settings.pluginsTitle", "settings.pluginsHint", "settings.reload", "settings.tab.providers", "router.provider",

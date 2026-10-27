@@ -251,7 +251,7 @@ public partial class App : Application
             var visible = MainWindow?.IsActive == true
                 && ReferenceEquals(Model.Bridge, sender)
                 && Model.Bridge.SelectedId == e.ConversationId;
-            if (visible) return;
+            if (visible && e.Kind != "question") return;
             var title = e.Kind switch
             {
                 "question" => Model.L("notifications.question"),

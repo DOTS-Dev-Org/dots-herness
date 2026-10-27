@@ -376,6 +376,7 @@ struct LocalAgentView: View {
     @EnvironmentObject private var agent: MobileAgent
     @EnvironmentObject private var localization: MobileLocalization
     @EnvironmentObject private var local: LocalWorkspaceStore
+    @EnvironmentObject private var loops: LoopScheduler
     @Binding var prompt: String
     @State private var questionAnswer = ""
     @State private var draftAttachments: [MobileAttachment] = []
@@ -385,6 +386,10 @@ struct LocalAgentView: View {
     @State private var isLoadingOlderTranscript = false
     @State private var didPositionTranscriptAtLatest = false
     @State private var projectImportError: String?
+    @State private var gitBranchSnapshot: MobileGitBranchSnapshot?
+    @State private var newBranchName = ""
+    @State private var showingNewBranch = false
+    @State private var isGitOperationInProgress = false
     @State private var showingCacheUsage = false
     @State private var showingCacheResumeInfo = false
     @State private var cacheNoticeClock = Date()
@@ -454,6 +459,129 @@ struct LocalAgentView: View {
         }
     }
 
+    private var gitBranchBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Menu {
+                    ForEach(local.projects) { project in
+                        Button {
+                            guard local.switchProject(project.id) else { return }
+                            agent.selectProject(project.id)
+                        } label: {
+                            Label(project.name, systemImage: project.id == local.selectedProjectID ? "checkmark" : "folder")
+                        }
+                        .disabled(agent.isRunning || loops.running != nil || local.activeSandbox != nil)
+                    }
+                    if !local.selectedProjectLocationAvailable {
+                        Divider()
+                        Button {
+                            isSelectingProjectFolder = true
+                            showingFileImporter = true
+                        } label: {
+                            Label(localization.text("project.missing.locate"), systemImage: "folder.badge.questionmark")
+                        }
+                        .disabled(agent.isRunning || loops.running != nil || local.activeSandbox != nil)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                        Text(agent.isNoProjectMode ? localization.text("mobile.agent.noProject") : local.selectedProject.name)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down").font(.caption2)
+                    }
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 8)
+                    .background(Color.primary.opacity(0.08), in: Capsule())
+                }
+                .disabled(agent.isRunning || loops.running != nil || local.activeSandbox != nil)
+
+                Menu {
+                    if let gitBranchSnapshot {
+                        ForEach(gitBranchSnapshot.branches, id: \.self) { branch in
+                            Button {
+                                changeGitBranch(to: branch)
+                            } label: {
+                                Label(branch, systemImage: branch == gitBranchSnapshot.currentBranch ? "checkmark" : "point.branch")
+                            }
+                        }
+                        if !gitBranchSnapshot.branches.isEmpty { Divider() }
+                    }
+                    Button {
+                        newBranchName = ""
+                        showingNewBranch = true
+                    } label: {
+                        Label(localization.text("mobile.settings.newBranch"), systemImage: "plus")
+                    }
+                    .disabled(gitBranchSnapshot?.branches.isEmpty != false || agent.isRunning || isGitOperationInProgress)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "point.branch")
+                        Text(gitBranchSnapshot?.currentBranch ?? localization.text("mobile.settings.branch"))
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down").font(.caption2)
+                    }
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 8)
+                    .background(Color.primary.opacity(0.08), in: Capsule())
+                }
+                .disabled(!local.selectedProjectLocationAvailable || gitBranchSnapshot == nil || agent.isRunning || isGitOperationInProgress)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+        }
+        .alert(localization.text("mobile.settings.newBranch"), isPresented: $showingNewBranch) {
+            TextField(localization.text("mobile.settings.newBranch"), text: $newBranchName)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button(localization.text("common.cancel"), role: .cancel) { }
+            Button(localization.text("mobile.settings.newBranch"), action: createGitBranch)
+                .disabled(newBranchName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+    }
+
+    private var mobileGitClient: MobileGitClient {
+        MobileGitClient(root: local.root, token: { SecureStore().read("oauth.github.access") ?? "" })
+    }
+
+    private func refreshGitBranches() async {
+        guard local.selectedProjectLocationAvailable else {
+            gitBranchSnapshot = nil
+            return
+        }
+        gitBranchSnapshot = await mobileGitClient.branchSnapshot()
+    }
+
+    private func changeGitBranch(to branch: String) {
+        guard !isGitOperationInProgress else { return }
+        isGitOperationInProgress = true
+        Task {
+            defer { isGitOperationInProgress = false }
+            do {
+                try await mobileGitClient.checkout(branch: branch)
+                await refreshGitBranches()
+            } catch {
+                projectImportError = error.localizedDescription
+            }
+        }
+    }
+
+    private func createGitBranch() {
+        let branch = newBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !branch.isEmpty, !isGitOperationInProgress else { return }
+        isGitOperationInProgress = true
+        Task {
+            defer { isGitOperationInProgress = false }
+            do {
+                try await mobileGitClient.createBranch(branch)
+                await refreshGitBranches()
+            } catch {
+                projectImportError = error.localizedDescription
+            }
+        }
+    }
+
     /// Every row names a reason the next request costs more than the last one.
     @ViewBuilder private var composerNotices: some View {
         if let routeSwitch = agent.routeSwitch {
@@ -503,21 +631,6 @@ struct LocalAgentView: View {
                     } message: {
                         Text(agent.currentCacheSummary.details)
                     }
-                }
-                if !local.selectedProjectLocationAvailable && !agent.isNoProjectMode {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(localization.text("project.missing.readOnly"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Button(localization.text("project.missing.locate")) {
-                            isSelectingProjectFolder = true
-                            showingFileImporter = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
                 }
                 if agent.transcript.isEmpty && !agent.isRunning {
                     MobileAgentWelcomeView(prompt: $prompt, isNoProject: agent.isNoProjectMode)
@@ -571,7 +684,8 @@ struct LocalAgentView: View {
                                                     .padding(.leading, 26)
                                             }
                                         }
-                                        .padding(10)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
                                         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                                         .accessibilityElement(children: .combine)
                                     } else {
@@ -599,13 +713,15 @@ struct LocalAgentView: View {
                                                 }
                                             }
                                         }
-                                        .padding(10)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
                                         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                                     }
                                 } else {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(label(for: turn)).font(.caption.bold()).foregroundStyle(color(for: turn))
                                         MarkdownBodyView(text: turn.text)
+                                        quickReplyButtons(for: turn)
                                     }
                                 }
                             }
@@ -820,6 +936,7 @@ struct LocalAgentView: View {
                 }
                 planStepsCard
                 composerNotices
+                gitBranchBar
                 HStack {
                     Button { showingFileImporter = true } label: { Image(systemName: "paperclip") }
                         .accessibilityLabel("Attach file")
@@ -962,6 +1079,12 @@ struct LocalAgentView: View {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                 }
             }
+            .task(id: local.selectedProjectID) {
+                while !Task.isCancelled {
+                    await refreshGitBranches()
+                    try? await Task.sleep(nanoseconds: 8_000_000_000)
+                }
+            }
             .task(id: agent.activeConversationId) {
                 while !Task.isCancelled {
                     cacheNoticeClock = Date()
@@ -979,6 +1102,40 @@ struct LocalAgentView: View {
         guard agent.send(prompt, attachments: draftAttachments, mode: mode, planMode: agent.planMode) else { return }
         prompt = ""
         draftAttachments = []
+    }
+
+    @ViewBuilder
+    private func quickReplyButtons(for turn: AgentTurn) -> some View {
+        let latestAssistantID = agent.transcript.last(where: { $0.role == .assistant })?.id
+        let latestAssistantIndex = agent.transcript.lastIndex(where: { $0.role == .assistant }) ?? -1
+        let latestUserIndex = agent.transcript.lastIndex(where: { $0.role == .user }) ?? -1
+        let replies = MobileQuickReplySuggestions.choices(
+            in: turn.text,
+            continueReply: localization.text("agent.continue"),
+            declineReply: localization.text("permission.reject")
+        )
+        if turn.role == .assistant, turn.id == latestAssistantID, latestAssistantIndex > latestUserIndex,
+           !agent.isRunning, !replies.isEmpty {
+            HStack(alignment: .top, spacing: 8) {
+                ForEach(Array(replies.enumerated()), id: \.element.id) { index, reply in
+                    Button {
+                        _ = agent.send(reply.text)
+                    } label: {
+                        Text(reply.text)
+                            .font(.callout)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(index == 0 ? .accentColor : .secondary)
+                    .disabled(!canSendPrompt)
+                }
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.top, 6)
+        }
     }
 
     private var canSendPrompt: Bool {

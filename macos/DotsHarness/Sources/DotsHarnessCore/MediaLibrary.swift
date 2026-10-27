@@ -42,6 +42,10 @@ public struct MediaLibraryItem: Identifiable, Codable, Sendable, Equatable {
     public var title: String
     public var path: String
     public var createdAt: Date
+    public var favorite: Bool? = nil
+    public var folder: String? = nil
+    public var tags: [String]? = nil
+    public var ocrText: String? = nil
 
     public var url: URL { URL(fileURLWithPath: path) }
     public var displayTitle: String { title.isEmpty ? kind.title : title }
@@ -107,6 +111,32 @@ public enum MediaLibrary {
         }
     }
 
+    public static func update(_ id: String, root: URL, change: (inout MediaLibraryItem) -> Void) {
+        mutate(root) { items in
+            guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+            change(&items[index])
+        }
+    }
+
+    /// Copies selected library files to a user-chosen folder, resolving duplicate names safely.
+    @discardableResult
+    public static func export(_ ids: Set<String>, to destination: URL, root: URL) throws -> Int {
+        let selected = items(root: root).filter { ids.contains($0.id) && FileManager.default.fileExists(atPath: $0.path) }
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        for item in selected {
+            let ext = item.url.pathExtension
+            let base = item.url.deletingPathExtension().lastPathComponent
+            var target = destination.appendingPathComponent(base).appendingPathExtension(ext)
+            var suffix = 2
+            while FileManager.default.fileExists(atPath: target.path) {
+                target = destination.appendingPathComponent("\(base) (\(suffix))").appendingPathExtension(ext)
+                suffix += 1
+            }
+            try FileManager.default.copyItem(at: item.url, to: target)
+        }
+        return selected.count
+    }
+
     // ponytail: one JSON file rewritten per change; move to SQLite when a library reaches tens of thousands of items.
     private static func mutate<Result>(_ root: URL, _ change: (inout [MediaLibraryItem]) -> Result) -> Result {
         lock.lock()
@@ -164,5 +194,14 @@ public final class MediaLibraryStore: ObservableObject {
 
     public func remove(_ id: String) {
         MediaLibrary.remove(id, root: root)
+    }
+
+    public func update(_ id: String, change: (inout MediaLibraryItem) -> Void) {
+        MediaLibrary.update(id, root: root, change: change)
+    }
+
+    @discardableResult
+    public func export(_ ids: Set<String>, to destination: URL) throws -> Int {
+        try MediaLibrary.export(ids, to: destination, root: root)
     }
 }

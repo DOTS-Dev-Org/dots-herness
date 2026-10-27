@@ -162,6 +162,8 @@ public final class WorkspaceMemory {
     var mapRefreshInFlight = Set<String>()
     /// The repository's file names, kept until git's index moves; see `relevantFiles`.
     var fileIndex: (workspace: URL, stamp: String, index: FileIndex, changes: [String: String])?
+    /// Cold-start indexing is deliberately detached from the first request.
+    var fileIndexPreparationInFlight = Set<String>()
     /// Request-specific file hits computed with the index on a worker, then consumed
     /// while the prompt sections are assembled on the main actor.
     var preparedFileContext: (workspace: URL, prompt: String, stamp: String, text: String)?

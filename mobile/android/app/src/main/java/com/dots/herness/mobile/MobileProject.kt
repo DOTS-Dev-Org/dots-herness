@@ -17,6 +17,23 @@ data class MobileProject(
     var remoteWorkspaceId: String? = null,
 )
 
+internal data class MobileProjectGroup(val key: String, val projects: List<MobileProject>)
+
+internal fun organizeMobileProjects(
+    projects: List<MobileProject>,
+    groupBySource: Boolean,
+    sortByName: Boolean,
+): List<MobileProjectGroup> {
+    val ordered = if (sortByName) projects.sortedBy { it.name.lowercase(java.util.Locale.ROOT) } else projects
+    if (!groupBySource) return listOf(MobileProjectGroup("all", ordered))
+
+    val grouped = ordered.groupBy { it.sourceKind }
+    val sourceOrder = listOf("local", "github", "remoteDesktop") + grouped.keys.filterNot {
+        it in setOf("local", "github", "remoteDesktop")
+    }
+    return sourceOrder.mapNotNull { source -> grouped[source]?.let { MobileProjectGroup(source, it) } }
+}
+
 class MobileProjectStore(context: Context) {
     private val appContext = context.applicationContext
     private val preferences = appContext.getSharedPreferences("herness.preferences", Context.MODE_PRIVATE)

@@ -15,6 +15,7 @@ struct PromptTextEditor: NSViewRepresentable {
     let onMoveSlashCommand: (Int) -> Bool
     let followUpSuggestion: String?
     var onDropFiles: (([URL]) -> Void)? = nil
+    var onDropImageData: ((Data, String) -> Void)? = nil
     var onPasteImage: ((Data) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
@@ -35,6 +36,7 @@ struct PromptTextEditor: NSViewRepresentable {
         editor.onMoveSlashCommand = onMoveSlashCommand
         editor.followUpSuggestion = followUpSuggestion
         editor.onDropFiles = onDropFiles
+        editor.onDropImageData = onDropImageData
         editor.onPasteImage = onPasteImage
         editor.onSuggestionAccepted = { [weak coordinator = context.coordinator] text in
             coordinator?.suggestionAccepted(text)
@@ -65,6 +67,7 @@ struct PromptTextEditor: NSViewRepresentable {
         editor.onMoveSlashCommand = onMoveSlashCommand
         editor.followUpSuggestion = followUpSuggestion
         editor.onDropFiles = onDropFiles
+        editor.onDropImageData = onDropImageData
         editor.onPasteImage = onPasteImage
         editor.isEditable = isEnabled
 
@@ -106,7 +109,13 @@ final class PromptNSTextView: NSTextView {
     var onSuggestionAccepted: ((String) -> Void)?
     var followUpSuggestion: String?
     var onDropFiles: (([URL]) -> Void)?
+    var onDropImageData: ((Data, String) -> Void)?
     var onPasteImage: ((Data) -> Void)?
+
+    private enum ImagePasteboardSource: Sendable {
+        case data(Data, typeIdentifier: String)
+        case file(URL)
+    }
 
     // An in-window card drawn over the editor keeps its own cursor: AppKit
     // tracking ignores what SwiftUI draws on top, hit testing does not.
@@ -133,9 +142,49 @@ final class PromptNSTextView: NSTextView {
     @discardableResult
     func pasteImage(from pasteboard: NSPasteboard) -> Bool {
         guard let onPasteImage,
-              let png = Self.pngImageData(from: pasteboard) else { return false }
-        onPasteImage(png)
+              let source = Self.imageSource(from: pasteboard) else { return false }
+        Task { @MainActor in
+            let png = await Task.detached(priority: .utility) {
+                let data: Data?
+                switch source {
+                case .data(let imageData, _):
+                    data = imageData
+                case .file(let url):
+                    data = try? Data(contentsOf: url)
+                }
+                return data.flatMap(Self.pngImageData(from:))
+            }.value
+            guard let png else { return }
+            onPasteImage(png)
+        }
         return true
+    }
+
+    private static func imageSource(from pasteboard: NSPasteboard) -> ImagePasteboardSource? {
+        let imageTypes = [UTType.png, .tiff, .jpeg, .heic, .gif].map {
+            NSPasteboard.PasteboardType($0.identifier)
+        }
+        for item in pasteboard.pasteboardItems ?? [] {
+            for type in imageTypes {
+                if let data = item.data(forType: type) {
+                    return .data(data, typeIdentifier: type.rawValue)
+                }
+            }
+        }
+
+        let fileURLs = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] ?? []
+        if let url = fileURLs.first(where: {
+            UTType(filenameExtension: $0.pathExtension)?.conforms(to: .image) == true
+        }) {
+            return .file(url)
+        }
+
+        guard let image = NSImage(pasteboard: pasteboard),
+              let tiff = image.tiffRepresentation else { return nil }
+        return .data(tiff, typeIdentifier: UTType.tiff.identifier)
     }
 
     static func pngImageData(from pasteboard: NSPasteboard) -> Data? {
@@ -165,20 +214,26 @@ final class PromptNSTextView: NSTextView {
         return pngImageData(from: tiff)
     }
 
-    private static func pngImageData(from data: Data) -> Data? {
-        guard let bitmap = NSBitmapImageRep(data: data) else { return nil }
-        return bitmap.representation(using: .png, properties: [:])
+    nonisolated private static func pngImageData(from data: Data) -> Data? {
+        ImageAttachmentData.png(from: data)
     }
 
     // NSTextView would otherwise swallow a file drop and insert its path as text,
     // so the surrounding SwiftUI `onDrop` never sees it.
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        guard let onDropFiles,
-              let urls = sender.draggingPasteboard.readObjects(
-                  forClasses: [NSURL.self],
-                  options: [.urlReadingFileURLsOnly: true]
-              ) as? [URL], !urls.isEmpty else { return super.performDragOperation(sender) }
-        onDropFiles(urls)
+        if let urls = sender.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL], !urls.isEmpty, let onDropFiles {
+            onDropFiles(urls)
+            return true
+        }
+
+        guard let onDropImageData,
+              case let .data(data, typeIdentifier) = Self.imageSource(from: sender.draggingPasteboard) else {
+            return super.performDragOperation(sender)
+        }
+        onDropImageData(data, typeIdentifier)
         return true
     }
 

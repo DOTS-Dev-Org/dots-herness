@@ -3,8 +3,13 @@ package com.dots.herness.mobile
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -134,6 +139,56 @@ class LoopScheduler(private val context: Context, private val makeAgent: () -> M
     companion object {
         const val WORK_NAME = "herness.loops"
         private const val CHANNEL = "herness.loops"
+        private const val ATTENTION_CHANNEL = "herness.questions.v1"
+
+        fun notifyAttention(
+            context: Context,
+            notificationID: String,
+            title: String,
+            subtitle: String,
+            detail: String,
+        ) {
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                val audio = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                val channel = NotificationChannel(
+                    ATTENTION_CHANNEL,
+                    context.getString(R.string.notifications_title),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply { setSound(sound, audio) }
+                manager.createNotificationChannel(channel)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) return
+
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                notificationID.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            val notification = NotificationCompat.Builder(context, ATTENTION_CHANNEL)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setSubText(subtitle)
+                .setContentText(detail.take(300))
+                .setStyle(NotificationCompat.BigTextStyle().bigText(detail.take(1000)))
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_SOUND)
+                .build()
+            NotificationManagerCompat.from(context).notify(notificationID.hashCode(), notification)
+        }
 
         fun notify(context: Context, title: String, body: String) {
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
@@ -179,7 +234,7 @@ class LoopWorker(context: Context, parameters: WorkerParameters) : CoroutineWork
                 providerApiKey = { provider -> secure.read("phone.provider.$provider").orEmpty() },
                 isProjectLocationAvailable = { projectRoot.isDirectory },
                 oauthToken = { chatGPT.accessToken },
-                sessionAccountId = { chatGPT.accountId },
+                sessionAccountId = { chatGPT.roomiestAccountId() },
                 oauthTokenForAccount = { account -> chatGPT.accessTokenFor(account) },
                 chatGPTAccountIDs = { chatGPT.accountIDs() },
             ).apply {

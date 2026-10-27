@@ -630,14 +630,6 @@ struct WorkspaceView: View {
             }
             selectedScreen
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .top) {
-                    if selectedTab == 0 {
-                        Rectangle()
-                            .fill(Color(uiColor: .systemBackground))
-                            .frame(height: 1)
-                            .allowsHitTesting(false)
-                    }
-                }
         }
         .overlay(alignment: .leading) {
             if isLeftDrawerPresented {
@@ -886,15 +878,22 @@ struct WorkspaceView: View {
         .onChange(of: agent.questionRequest?.id) { _, id in
             guard id != nil, let request = agent.questionRequest else { return }
             let questions = request.askUserQuestions.map(\.prompt).joined(separator: " · ")
+            let detail = questions.isEmpty ? request.question : questions
+            let title = localization.text("notifications.question")
             notificationInbox.append(
                 kind: "question",
-                title: localization.text("notifications.question"),
+                title: title,
                 subtitle: local.selectedProject.name,
-                detail: questions.isEmpty ? request.question : questions,
+                detail: detail,
                 conversationID: agent.activeConversationId,
                 projectID: agent.projectID,
                 conversationPath: local.selectedProject.localRoot,
-                isRead: selectedTab == 0)
+                isRead: false)
+            MobileAttentionNotificationService.shared.show(
+                title: title,
+                subtitle: local.selectedProject.name,
+                detail: detail,
+                identifier: request.id)
         }
         .onChange(of: agent.approvalRequest?.id) { _, id in
             guard id != nil, let request = agent.approvalRequest else { return }
@@ -916,15 +915,21 @@ struct WorkspaceView: View {
         let turn = agent.transcript.last { $0.role == (failed ? .error : .assistant) }
         guard let turn, turn.id != lastNotifiedTurnID else { return }
         lastNotifiedTurnID = turn.id
+        let title = localization.text(failed ? "notifications.operationFailed" : "notifications.responseReady")
         notificationInbox.append(
             kind: failed ? "failed" : "completed",
-            title: localization.text(failed ? "notifications.operationFailed" : "notifications.responseReady"),
+            title: title,
             subtitle: local.selectedProject.name,
             detail: turn.text,
             conversationID: agent.activeConversationId,
             projectID: agent.projectID,
             conversationPath: local.selectedProject.localRoot,
-            isRead: selectedTab == 0)
+            isRead: false)
+        MobileAttentionNotificationService.shared.show(
+            title: title,
+            subtitle: local.selectedProject.name,
+            detail: turn.text,
+            identifier: turn.id.uuidString)
     }
 
     private func openNotification(_ item: MobileInboxNotification) {
@@ -980,6 +985,12 @@ struct WorkspaceView: View {
     }
 }
 
+private struct MobileNavigationProjectGroup: Identifiable {
+    let id: String
+    let title: String?
+    let projects: [MobileProject]
+}
+
 private struct MobileNavigationDrawer: View {
     @EnvironmentObject private var localization: MobileLocalization
 
@@ -1005,6 +1016,30 @@ private struct MobileNavigationDrawer: View {
     @State private var expandedProjectID: String?
     @State private var isAddingProject = false
     @State private var newProjectName = ""
+    @AppStorage("mobile.sidebar.projectGrouping") private var projectGrouping = "source"
+    @AppStorage("mobile.sidebar.projectSort") private var projectSort = "default"
+
+    private var organizedProjectGroups: [MobileNavigationProjectGroup] {
+        MobileProjectOrganization.groups(
+            projects,
+            groupBySource: projectGrouping == "source",
+            sortByName: projectSort == "name"
+        ).map { group in
+            MobileNavigationProjectGroup(
+                id: group.id,
+                title: group.id == "all" ? nil : sourceTitle(group.id),
+                projects: group.projects
+            )
+        }
+    }
+
+    private func sourceTitle(_ source: String) -> String {
+        switch source {
+        case "local": return localization.text("mobile.workspace.local")
+        case "github": return "GitHub"
+        default: return "Desktop"
+        }
+    }
 
     init(
         projects: [MobileProject],
@@ -1106,6 +1141,63 @@ private struct MobileNavigationDrawer: View {
                         .buttonStyle(.plain)
                         .disabled(!canChangeProject)
                         .accessibilityLabel(isAddingProject ? closeTitle : "Add project")
+
+                        Menu {
+                            Menu(localization.text("sidebar.groupBy")) {
+                                Button {
+                                    projectGrouping = "source"
+                                } label: {
+                                    if projectGrouping == "source" {
+                                        Label(localization.text("market.field.source"), systemImage: "checkmark")
+                                    } else {
+                                        Text(localization.text("market.field.source"))
+                                    }
+                                }
+                                Button {
+                                    projectGrouping = "none"
+                                } label: {
+                                    if projectGrouping == "none" {
+                                        Label(localization.text("sidebar.projectGroupingNone"), systemImage: "checkmark")
+                                    } else {
+                                        Text(localization.text("sidebar.projectGroupingNone"))
+                                    }
+                                }
+                            }
+
+                            Menu(localization.text("sidebar.sortProjectsBy")) {
+                                Button {
+                                    projectSort = "default"
+                                } label: {
+                                    if projectSort == "default" {
+                                        Label(localization.text("sidebar.projectSortDefault"), systemImage: "checkmark")
+                                    } else {
+                                        Text(localization.text("sidebar.projectSortDefault"))
+                                    }
+                                }
+                                Button {
+                                    projectSort = "name"
+                                } label: {
+                                    if projectSort == "name" {
+                                        Label(localization.text("studio.home.sort.name"), systemImage: "checkmark")
+                                    } else {
+                                        Text(localization.text("studio.home.sort.name"))
+                                    }
+                                }
+                            }
+
+                            Divider()
+                            Button(localization.text("modelPicker.reset")) {
+                                projectGrouping = "source"
+                                projectSort = "default"
+                            }
+                        } label: {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.system(size: 12, weight: .semibold))
+                                .frame(width: 32, height: 32)
+                                .contentShape(Rectangle())
+                        }
+                        .menuStyle(.borderlessButton)
+                        .accessibilityLabel(localization.text("sidebar.groupBy"))
                     }
                     .padding(.horizontal, 4)
 
@@ -1127,8 +1219,18 @@ private struct MobileNavigationDrawer: View {
 
                     ScrollView(.vertical, showsIndicators: false) {
                         LazyVStack(alignment: .leading, spacing: 3) {
-                            ForEach(projects) { project in
-                                projectRow(project)
+                            ForEach(organizedProjectGroups) { group in
+                                if let title = group.title {
+                                    Text(title)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(.tertiary)
+                                        .padding(.leading, 10)
+                                        .padding(.top, 8)
+                                        .padding(.bottom, 2)
+                                }
+                                ForEach(group.projects) { project in
+                                    projectRow(project)
+                                }
                             }
                         }
                     }

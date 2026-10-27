@@ -357,13 +357,26 @@ extension WorkspaceMemory {
             .joined(separator: "\n")
     }
 
-    /// The repository's files named like the request, so the agent opens them instead
-    /// of sweeping the workspace for where to start.
-    /// The prompt gets a path-only index after its worker pass; source symbols and commit
-    /// subjects are added by a background rebuild.
+    /// Existing file hits stay available; a cold workspace index is built beside the
+    /// first provider request instead of delaying it.
     func prepareFileIndexForPrompt(workspace: URL?, query: String) async {
         guard let workspace,
               workspaceURL?.standardizedFileURL == workspace.standardizedFileURL else { return }
+        let root = workspace.standardizedFileURL
+        guard fileIndex?.workspace == root else {
+            let requestKey = root.path
+            guard fileIndexPreparationInFlight.insert(requestKey).inserted else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.buildFileIndexForPrompt(workspace: root, query: query)
+                self.fileIndexPreparationInFlight.remove(requestKey)
+            }
+            return
+        }
+        await buildFileIndexForPrompt(workspace: root, query: query)
+    }
+
+    private func buildFileIndexForPrompt(workspace: URL, query: String) async {
         let signpost = PerformanceSignposts.begin("WorkspaceFileIndex")
         defer { PerformanceSignposts.end("WorkspaceFileIndex", signpost) }
 
@@ -555,7 +568,7 @@ extension WorkspaceMemory {
             let id = item["eventId"] as? String ?? "unknown"
             let payload = item["payload"] as? [String: Any] ?? item
             let summary = payload["summary"] as? String ?? payload["key"] as? String ?? payload["value"] as? String ?? id
-            return "- \(prefix) `\(id)`: \(sanitize(summary, limit: 240))"
+            return "- \(prefix) `\(id)`: \(sanitizeSentence(summary, limit: Self.decisionLimit))"
         }.joined(separator: "\n")
     }
 

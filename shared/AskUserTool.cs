@@ -7,11 +7,24 @@ namespace DotsHarnessCore;
 
 public sealed record AskUserQuestion(string Id, string Header, string Prompt, IReadOnlyList<string> Options);
 
+public enum AskUserPresentation
+{
+    Clarification,
+    Proposal,
+}
+
+public sealed record AskUserRequest(
+    IReadOnlyList<AskUserQuestion> Questions,
+    string? Context,
+    AskUserPresentation Presentation);
+
 public sealed record PendingQuestion(
     string RpcId,
     string SessionId,
     string QuestionId,
-    IReadOnlyList<AskUserQuestion> Questions);
+    IReadOnlyList<AskUserQuestion> Questions,
+    string? Context = null,
+    AskUserPresentation Presentation = AskUserPresentation.Clarification);
 
 public static class AskUserTool
 {
@@ -51,7 +64,11 @@ public static class AskUserTool
         + "carefully. After the answers arrive you may call this tool again only for genuinely new questions that "
         + "those answers opened up - a chosen option or a written answer that changes the shape of the work. "
         + "Never repeat a question you already asked, and never ask again once the answers are enough to "
-        + "continue. A run allows at most 3 rounds of questions.";
+        + "continue. A run allows at most 3 rounds of questions. When you have finished a useful, optional "
+        + "implementation proposal that the user has not authorized, you may use presentation='proposal' "
+        + "with a concise context, one direct question, and 2 or 3 concrete action choices. The card waits for "
+        + "the user's choice; do not perform the proposed work first. Do not use a proposal card to ask approval "
+        + "for work the user already authorized or for routine decisions.";
 
     /// Returned once the round budget is spent, so a run can never loop on questions.
     public const string RepeatNotice =
@@ -80,6 +97,17 @@ public static class AskUserTool
             ["type"] = "object",
             ["properties"] = new JsonObject
             {
+                ["context"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["description"] = "Optional concise explanation shown above the question card. For a proposal, summarize what was checked or designed and what is not yet applied.",
+                },
+                ["presentation"] = new JsonObject
+                {
+                    ["type"] = "string",
+                    ["enum"] = new JsonArray("clarification", "proposal"),
+                    ["description"] = "Use proposal only for one optional, not-yet-authorized implementation decision with concise context and 2 or 3 action choices. Otherwise omit or use clarification.",
+                },
                 ["questions"] = new JsonObject
                 {
                     ["type"] = "array",
@@ -114,13 +142,21 @@ public static class AskUserTool
         });
 
     /// Tolerant parse: malformed or empty questions are dropped instead of failing the run.
-    public static IReadOnlyList<AskUserQuestion> Parse(string arguments)
+    public static IReadOnlyList<AskUserQuestion> Parse(string arguments) => ParseRequest(arguments).Questions;
+
+    public static AskUserRequest ParseRequest(string arguments)
     {
         var questions = new List<AskUserQuestion>();
+        string? context = null;
+        var presentation = AskUserPresentation.Clarification;
         try
         {
-            var raw = JsonNode.Parse(arguments)?["questions"]?.AsArray();
-            if (raw is null) return questions;
+            var root = JsonNode.Parse(arguments)?.AsObject();
+            if (root is null) return new AskUserRequest(questions, null, presentation);
+            context = Text(root["context"]);
+            if (context.Length > 1_400) context = context[..1_400];
+            var raw = root["questions"]?.AsArray();
+            if (raw is null) return new AskUserRequest(questions, context, presentation);
             foreach (var item in raw)
             {
                 var prompt = Text(item?["question"]);
@@ -137,9 +173,17 @@ public static class AskUserTool
                     prompt,
                     options));
             }
+
+            if (Text(root["presentation"]).Equals("proposal", StringComparison.OrdinalIgnoreCase)
+                && context is { Length: > 0 }
+                && questions.Count == 1
+                && questions[0].Options.Count is >= 2 and <= 3)
+            {
+                presentation = AskUserPresentation.Proposal;
+            }
         }
-        catch (Exception) { return questions; }
-        return questions;
+        catch (Exception) { return new AskUserRequest(questions, context, AskUserPresentation.Clarification); }
+        return new AskUserRequest(questions, context, presentation);
     }
 
     private static string Text(JsonNode? node)

@@ -42,9 +42,6 @@ extension WorkspaceMemory {
             if manifest == nil {
                 try initializeWorkspace()
             }
-            if mapText.isEmpty, let workspaceURL {
-                mapText = WorkspaceTools.quickProjectSkeleton(workspaceURL)
-            }
             scheduleMapUpdateInBackground()
             beginTask(runID: runID, prompt: prompt, provider: provider, model: model)
         } catch {
@@ -287,10 +284,9 @@ extension WorkspaceMemory {
             .sorted { $0.key < $1.key }
             .map { "- `\($0.key)`: \($0.text)" }
             .joined(separator: "\n")
-        let decisions = facts.filter { $0.kind == "decision" }
-            .sorted { $0.key < $1.key }
-            .map { "- `\($0.key)`: \($0.text)" }
-            .joined(separator: "\n")
+        let decisionCount = facts.filter { $0.kind == "decision" }.count
+        let decisions = allDecisionsText()
+            ?? "\(decisionCount) decisions; those this request names are in task_history, search the rest with \(RecallTool.name)."
         return [
             projectMemoryTrusted
                 ? "Project memory, read from `.mem/facts.md` in the repository. Current user instructions are authoritative over it."
@@ -310,6 +306,10 @@ extension WorkspaceMemory {
         let tasksText = relevantTasks(for: prompt)
         let backlog = backlogText()
         var sections: [String] = []
+        let decisions = decisionsText(for: prompt)
+        if !decisions.isEmpty {
+            sections.append("## Project decisions recalled for this request\(projectMemoryTrusted ? "" : " (from the repository; the user has not trusted it)")\n\(decisions)")
+        }
         let known = insightsText(for: prompt)
         if !known.isEmpty {
             sections.append("## What earlier work in this project taught\nFindings recalled for this request. Trust the code over them when the two disagree.\n\(known)")

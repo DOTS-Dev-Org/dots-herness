@@ -25,7 +25,7 @@ public static class MediaTools
     public static readonly string[] All =
     [
         "move", "hand", "scale", "frame", "section", "slice", "rectangle", "line", "arrow", "ellipse", "polygon", "star",
-        "pen", "pencil", "text", "textPath", "comment",
+        "pen", "pencil", "marker", "text", "textPath", "comment",
     ];
 
     public static string Title(string tool) => tool switch
@@ -48,7 +48,7 @@ public static class MediaTools
     {
         "move" => "➤", "hand" => "✋", "scale" => "⤡", "frame" => "#", "section" => "⬚", "slice" => "✂",
         "rectangle" => "□", "line" => "╱", "arrow" => "↗", "ellipse" => "○", "polygon" => "△", "star" => "☆",
-        "pen" => "✒", "pencil" => "✏", "text" => "T", "textPath" => "Ŧ", "comment" => "💬", _ => "•",
+        "pen" => "✒", "pencil" => "✏", "marker" => "🖍", "text" => "T", "textPath" => "Ŧ", "comment" => "💬", _ => "•",
     };
 }
 
@@ -512,7 +512,7 @@ public sealed class MediaEditorModel
     }
 
     /// <summary>Adds a stroked path through <paramref name="points"/>: a line, an arrow, or a pen or pencil stroke.</summary>
-    public void AddPath(IReadOnlyList<BoardPoint> points, string name, bool arrow = false)
+    public void AddPath(IReadOnlyList<BoardPoint> points, string name, bool arrow = false, string colorHex = "#111111", double strokeWidth = 4, double opacity = 1)
     {
         if (points.Count < 2 || Target(points[0]) is not { } canvas) return;
         CanvasId = canvas.Id;
@@ -523,7 +523,7 @@ public sealed class MediaEditorModel
         AddLayer(new MediaLayer
         {
             Name = name, Kind = "path", X = minX - canvas.X, Y = minY - canvas.Y, Width = width, Height = height,
-            ColorHex = "#111111", StrokeWidth = 4, Arrow = arrow,
+            ColorHex = colorHex, StrokeWidth = strokeWidth, Opacity = opacity, Arrow = arrow,
             Points = points.SelectMany(p => new[] { (p.X - minX) / width, (p.Y - minY) / height }).ToList(),
         });
     }

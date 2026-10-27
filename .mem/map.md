@@ -2,7 +2,7 @@
 id: map
 title: Project map
 type: map
-updated: 2026-10-27T11:29:41Z
+updated: 2026-10-27T16:00:18Z
 tags: [map]
 links: ["index"]
 ---
@@ -95,6 +95,7 @@ Each with its headings. Read the one that covers the request before searching th
 - `docs/cache-reuse-live-acceptance-2026-10-04-rerun.md` - Cache tekrar kullanımı canlı kabul yeniden denemesi; Sürüm ve kapsam; Canlı sonuç özeti; ChatGPT; Claude; Kayıp ve kabul kararı; Sonraki işlem
 - `docs/cache-reuse-live-light-models-2026-10-04.md` - Dusuk modellerle canli cache kontrolu; Kapsam ve model secimi; Sonuclar; Keychain engeli; Butce ve loglar; Dokuman kontrolu
 - `docs/computer-use.md` - Desktop application inspection and control; Enable; Tool sequence; Validation
+- `docs/media-feature-gap-analysis.md` - Medya özellikleri: karşılaştırma ve eksik listesi; Uygulama durumu; İnceleme öncesi başlangıç durumu; Referanslardan alınabilecek ürün fikirleri; Önerilen tamam
 - `docs/native-marketplace.md` - Native Plugin Marketplace; Beceriler ve proje altyapıları; Yayın akışı; Moderasyon durumları; Üretim kurulumu; Güven modeli
 - `docs/platform-parity.md` - Platform Parity — Bilinen Farklar; Kapatılan macOS boşlukları (Windows/Linux); Desktop shell (macOS referansıyla ilerletildi); Tray / menü çubuğu varlığı; Yanıt
 - `docs/prompt-cache-history.md` - Provider-independent prompt history; Compaction (macOS); Reuse measurement (all platforms); Cache key scope
@@ -110,7 +111,6 @@ Each with its headings. Read the one that covers the request before searching th
 - `linux/DotsHarness/README.md` - Dots Harness for Linux; Runtime requirements
 - `macos/DotsHarness/CONTRACT.md` - Native provider contract
 - `macos/DotsHarness/README.md` - Dots Harness for macOS; Provider connections; Local models and sharing; Turkish speech runtime and signing
-- `native/vision-runtime/README.md` - DOTS Vision native runtime
 
 ## Guidance
 

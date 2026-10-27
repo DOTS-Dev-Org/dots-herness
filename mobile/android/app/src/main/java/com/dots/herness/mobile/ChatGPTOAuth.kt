@@ -103,6 +103,7 @@ class ChatGPTOAuth(context: Context) {
             if (refresh.isNotBlank()) requestToken(listOf("grant_type" to "refresh_token", "refresh_token" to refresh, "client_id" to CLIENT_ID), profile.id)
         }
         reloadAccounts()
+        refreshQuota()
     }
 
     fun signOut() = removeAccount(accountId)
@@ -127,6 +128,30 @@ class ChatGPTOAuth(context: Context) {
     }
 
     fun accountIDs(): List<String> = accounts.map { it.id }
+
+    private val quota = java.util.concurrent.ConcurrentHashMap<String, Double>()
+    private val quotaCheckedAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Account for a conversation that has none yet: the one with the most
+     *  `/wham/usage` quota left (desktop ChatGPTUsageService contract). A started
+     *  conversation keeps its pinned account. Reads a minute-old figure at most;
+     *  the refresh it starts serves the next conversation. */
+    fun roomiestAccountId(): String {
+        val ids = accountIDs()
+        scope.launch { refreshQuota(ids) }
+        return ChatGPTQuota.pick(ids, accountId, quota)
+    }
+
+    suspend fun refreshQuota(ids: List<String> = accountIDs()) {
+        val now = System.currentTimeMillis()
+        // Marked now so overlapping callers do not fetch the same account twice.
+        val stale = ids.filter { id -> (quotaCheckedAt[id] ?: 0L) <= now - 60_000 }.onEach { quotaCheckedAt[it] = now }
+        for (id in stale) {
+            val token = accessTokenFor(id)
+            val left = withContext(Dispatchers.IO) { ChatGPTQuota.read(id, token) }
+            if (left == null) quota.remove(id) else quota[id] = left
+        }
+    }
     fun accessTokenFor(id: String): String {
         val scoped = secure.read(profileKey("access", id))
         val legacy = if (secure.read("oauth.openai.account") == id) secure.read("oauth.openai.access") else null
@@ -260,3 +285,39 @@ class ChatGPTOAuth(context: Context) {
         private const val CALLBACK = "herness://oauth/openai"
     }
 }
+
+object ChatGPTQuota {
+    /** Most quota left first; unknown sits between healthy and spent; the
+     *  account picked in Settings breaks ties. */
+    fun pick(ids: List<String>, active: String, remaining: Map<String, Double>): String {
+        fun rank(id: String): Double = remaining[id]?.let { if (it <= 0) -1.0 else it } ?: 0.0
+        return ids.maxWithOrNull(compareBy<String>({ rank(it) }, { it == active })) ?: active
+    }
+
+    /** The tighter of the 5-hour and weekly windows. */
+    fun remaining(json: String): Double? = runCatching {
+        val limit = JSONObject(json).optJSONObject("rate_limit") ?: return null
+        val used = listOf("primary_window", "secondary_window").mapNotNull { name ->
+            limit.optJSONObject(name)?.opt("used_percent")?.toString()?.toDoubleOrNull()
+        }
+        used.maxOrNull()?.let { maxOf(0.0, 1 - minOf(it, 100.0) / 100) }
+    }.getOrNull()
+
+    fun read(id: String, token: String): Double? {
+        if (token.isBlank()) return null
+        return runCatching {
+            val connection = URL("https://chatgpt.com/backend-api/wham/usage").openConnection() as HttpURLConnection
+            connection.connectTimeout = 20_000
+            connection.readTimeout = 20_000
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("ChatGPT-Account-Id", id)
+            connection.setRequestProperty("originator", "codex_cli_rs")
+            connection.setRequestProperty("Accept", "application/json")
+            try {
+                if (connection.responseCode !in 200..299) null
+                else remaining(connection.inputStream.bufferedReader().use { it.readText() })
+            } finally { connection.disconnect() }
+        }.getOrNull()
+    }
+}
+

@@ -16,6 +16,9 @@ public class PlanStepsToolTests
             [new PlanStep("Read code", "done"), new PlanStep("Fix bug", "in_progress"), new PlanStep("Test", "pending")],
             PlanStepsTool.CurrentSteps([new ChatMessage { Kind = ChatKind.User, Text = "go" }, plan]));
         Assert.Empty(PlanStepsTool.CurrentSteps([plan, new ChatMessage { Kind = ChatKind.User, Text = "next" }]));
+        Assert.Contains("- Fix bug\n- Test", PlanStepsTool.UnfinishedReminder([plan]));
+        var finished = new ChatMessage { Kind = ChatKind.Tool, Text = "✓ update_plan", RawToolOutput = PlanStepsTool.Execute("""{"steps":[{"title":"Read code","status":"done"}]}""") };
+        Assert.Null(PlanStepsTool.UnfinishedReminder([finished]));
         Assert.StartsWith("The plan must", PlanStepsTool.Execute("""{"steps":[]}"""));
     }
 }

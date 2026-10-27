@@ -395,8 +395,9 @@ public partial class App : Application
             var visible = window?.IsActive == true
                 && ReferenceEquals(Model.Bridge, sender)
                 && Model.Bridge.SelectedId == e.ConversationId;
-            if (visible) return;
+            if (visible && e.Kind != "question") return;
             var start = new ProcessStartInfo("notify-send") { UseShellExecute = false, CreateNoWindow = true };
+            if (e.Kind == "question") start.ArgumentList.Add("--urgency=critical");
             start.ArgumentList.Add(e.ConversationTitle);
             var title = e.Kind switch
             {

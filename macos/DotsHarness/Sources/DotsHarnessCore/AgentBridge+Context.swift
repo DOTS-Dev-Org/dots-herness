@@ -137,25 +137,36 @@ extension NativeAgentHost {
         if conversationID == activeConversationID {
             let usage = response?.usage
             let estimatedInputTokens = inputComposition?.estimatedTotalTokens ?? 0
-            let measuredInputTokens = usage.map {
-                $0.breakdown(forAPI: servedConfiguration.api).freshInputTokens
+            let inputBreakdown = usage?.breakdown(forAPI: servedConfiguration.api)
+            let measuredInputTokens = inputBreakdown.flatMap {
+                $0.totalInputTokens > 0 ? $0.freshInputTokens : nil
             } ?? estimatedInputTokens
+            let estimatedInputWasUsed = (inputBreakdown?.totalInputTokens ?? 0) <= 0
+                && estimatedInputTokens > 0
             let estimatedOutputTokens = response.map { AgentContextCompaction.estimateTokens($0.message) } ?? 0
             let measuredOutputTokens = event.outputTokens > 0
                 ? event.outputTokens
                 : estimatedOutputTokens
-            let retryTokens = retryUsage.map {
-                let breakdown = $0.breakdown(forAPI: servedConfiguration.api)
-                return breakdown.freshInputTokens + max(0, $0.outputTokens)
+            let retryBreakdown = retryUsage?.breakdown(forAPI: servedConfiguration.api)
+            let measuredRetryInputTokens = retryBreakdown.flatMap {
+                $0.totalInputTokens > 0 ? $0.freshInputTokens : nil
+            } ?? estimatedInputTokens
+            let measuredRetryOutputTokens = retryUsage.map {
+                $0.outputTokens > 0 ? $0.outputTokens : estimatedOutputTokens
             } ?? 0
+            let retryTokens = retryUsage == nil
+                ? 0
+                : measuredRetryInputTokens + measuredRetryOutputTokens
             activeRunTokens += measuredInputTokens + measuredOutputTokens + retryTokens
             let hasCacheAccounting = [usage?.cachedTokens, usage?.cacheWriteTokens, usage?.cacheMissTokens]
                 .contains { $0 != nil }
             let retryHasCacheAccounting = [retryUsage?.cachedTokens, retryUsage?.cacheWriteTokens, retryUsage?.cacheMissTokens]
                 .contains { $0 != nil }
-            if (usage == nil && estimatedInputTokens > 0)
+            if estimatedInputWasUsed
                 || (usage?.inputTokens ?? 0) > 0 && !hasCacheAccounting
                 || event.outputTokens == 0 && estimatedOutputTokens > 0
+                || retryUsage != nil && (retryBreakdown?.totalInputTokens ?? 0) <= 0 && estimatedInputTokens > 0
+                || retryUsage != nil && (retryUsage?.outputTokens ?? 0) <= 0 && estimatedOutputTokens > 0
                 || retryUsage != nil && (retryUsage?.inputTokens ?? 0) > 0 && !retryHasCacheAccounting {
                 activeRunTokenCountHasEstimate = true
             }

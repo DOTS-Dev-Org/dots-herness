@@ -32,6 +32,31 @@ struct MobileProject: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
+enum MobileProjectOrganization {
+    struct Group: Identifiable {
+        let key: String
+        let projects: [MobileProject]
+        var id: String { key }
+    }
+
+    static func groups(
+        _ projects: [MobileProject],
+        groupBySource: Bool,
+        sortByName: Bool
+    ) -> [Group] {
+        let ordered = sortByName
+            ? projects.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            : projects
+        guard groupBySource else { return [Group(key: "all", projects: ordered)] }
+
+        let grouped = Dictionary(grouping: ordered, by: { $0.sourceKind.rawValue })
+        let order = ["local", "github", "remoteDesktop"] + grouped.keys.filter {
+            !["local", "github", "remoteDesktop"].contains($0)
+        }
+        return order.compactMap { key in grouped[key].map { Group(key: key, projects: $0) } }
+    }
+}
+
 @MainActor
 final class MobileProjectStore: ObservableObject {
     @Published private(set) var projects: [MobileProject]

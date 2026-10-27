@@ -419,11 +419,31 @@ MAC_UI.update({
     ),
 })
 
+MAC_UI.update({
+    "sidebar.groupBy": (
+        "Group by",
+        "Grupla|Gruppieren nach|Agrupar por|Grouper par|Raggruppa per|グループ化|그룹화 기준|Groeperen op|Agrupar por|Группировать по|分组依据|تجميع حسب|গ্রুপ করুন|इसके अनुसार समूहित करें|Kelompokkan menurut|Nhóm theo|گروپ کی بنیاد|यानुसार गटबद्ध करा|దీని ప్రకారం సమూహపరచు|இதன்படி குழுவாக்கு|گروه‌بندی بر اساس|Grupuj według|Групувати за|จัดกลุ่มตาม|Kumpulkan mengikut|Grupează după|Ομαδοποίηση κατά|Seskupit podle|Csoportosítás",
+    ),
+    "sidebar.sortProjectsBy": (
+        "Sort projects by",
+        "Projeleri sıralama ölçütü|Projekte sortieren nach|Ordenar proyectos por|Trier les projets par|Ordina progetti per|プロジェクトの並べ替え|프로젝트 정렬 기준|Projecten sorteren op|Ordenar projetos por|Сортировать проекты по|项目排序依据|ترتيب المشاريع حسب|প্রকল্প সাজানোর মানদণ্ড|प्रोजेक्ट क्रमबद्ध करें|Urutkan proyek menurut|Sắp xếp dự án theo|پروجیکٹس کی ترتیب|प्रकल्पांची क्रमवारी|ప్రాజెక్ట్‌లను క్రమబద్ధీకరించు|திட்டங்களை வரிசைப்படுத்து|مرتب‌سازی پروژه‌ها بر اساس|Sortuj projekty według|Сортувати проєкти за|เรียงโปรเจกต์ตาม|Isih projek mengikut|Sortează proiectele după|Ταξινόμηση έργων κατά|Řadit projekty podle|Projektek rendezése",
+    ),
+    "sidebar.projectSortDefault": (
+        "Default order",
+        "Varsayılan sıra|Standardsortierung|Orden original|Ordre par défaut|Ordine predefinito|既定の順序|기본 순서|Standaardvolgorde|Ordem padrão|Исходный порядок|默认顺序|الترتيب الافتراضي|ডিফল্ট ক্রম|डिफ़ॉल्ट क्रम|Urutan bawaan|Thứ tự mặc định|طے شدہ ترتیب|डीफॉल्ट क्रम|డిఫాల్ట్ క్రమం|இயல்புநிலை வரிசை|ترتیب پیش‌فرض|Domyślna kolejność|Типовий порядок|ลำดับเริ่มต้น|Susunan lalai|Ordinea implicită|Προεπιλεγμένη σειρά|Výchozí pořadí|Alapértelmezett sorrend",
+    ),
+    "sidebar.projectGroupingNone": (
+        "No grouping",
+        "Gruplandırma yok|Keine Gruppierung|Sin agrupar|Aucun regroupement|Nessun raggruppamento|グループ化しない|그룹화 안 함|Niet groeperen|Sem agrupamento|Без группировки|不分组|بدون تجميع|কোনো গ্রুপিং নয়|समूहीकरण नहीं|Tanpa pengelompokan|Không nhóm|گروپ بندی نہیں|गटबद्ध करू नका|సమూహపరచవద్దు|குழுவாக்க வேண்டாம்|بدون گروه‌بندی|Bez grupowania|Без групування|ไม่จัดกลุ่ม|Tiada pengumpulan|Fără grupare|Χωρίς ομαδοποίηση|Bez seskupení|Nincs csoportosítás",
+    ),
+})
+
 # These macOS strings are also used by the Windows and Linux native shells.
 # The localization completion tool copies their translations into shared/*.resx.
 SHARED_KEYS.extend([
     "settings.compaction.autoRouted", "settings.compaction.effectiveThreshold", "sidebar.signOut", "market.unpublish",
     "sidebar.projects", "sidebar.recent", "sidebar.search", "sidebar.pullRequests", "sidebar.sites", "sidebar.scheduled", "sidebar.addProject",
+    "sidebar.groupBy", "sidebar.sortProjectsBy", "sidebar.projectSortDefault", "sidebar.projectGroupingNone",
     "settings.folder", "settings.compactTrigger", "settings.compactTrigger.hint", "settings.explore.subagents", "settings.explore.hint",
     "settings.responseStyle", "settings.responseStyle.hint", "responseStyle.balanced", "responseStyle.concise", "responseStyle.ultra", "responseStyle.detailed",
     "settings.computerUse.enable", "settings.updates.title", "settings.updates.available", "settings.updates.download",

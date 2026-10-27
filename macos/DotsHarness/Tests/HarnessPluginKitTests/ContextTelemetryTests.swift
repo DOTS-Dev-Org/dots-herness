@@ -132,4 +132,106 @@ final class ContextTelemetryTests: XCTestCase {
         XCTAssertEqual(event.inputTokens, 100)
         XCTAssertEqual(event.outputTokens, 40)
     }
+
+    @MainActor
+    func testLiveRunTokenCountAccumulatesAcrossRequests() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DotsHarnessRunTokens-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let paths = SupportPaths(
+            root: root,
+            plugins: root.appendingPathComponent("plugins", isDirectory: true),
+            presets: root.appendingPathComponent("presets", isDirectory: true),
+            settings: root.appendingPathComponent("settings.json"),
+            hostPatch: root.appendingPathComponent("host.patch.yml"),
+            trust: root.appendingPathComponent("trust.json"),
+            models: root.appendingPathComponent("models", isDirectory: true),
+            runtime: root.appendingPathComponent("runtime", isDirectory: true)
+        )
+        let host = NativeAgentHost(
+            paths: paths,
+            endpoint: AgentEndpointController(baseURL: "http://127.0.0.1:1", modelID: "test")
+        )
+        host.start(workspacePath: root.path)
+        host.newConversation()
+        let conversationID = try XCTUnwrap(host.selectedID)
+        host.activeConversationID = conversationID
+        let configuration = AgentConfiguration(
+            baseURL: "https://example.test", model: "test", api: RouterAPIKind.openAICompatible.rawValue
+        )
+
+        for (input, output, cached, cacheWrite) in [(100, 10, 70, 10), (50, 5, 20, 5)] {
+            let response = AgentResponse(
+                message: AgentMessage(role: .assistant, content: "ok"),
+                usage: AgentUsage(
+                    inputTokens: input,
+                    outputTokens: output,
+                    cachedTokens: cached,
+                    cacheWriteTokens: cacheWrite
+                )
+            )
+            host.recordContextUsage(
+                response,
+                conversationID: conversationID,
+                configuration: configuration,
+                cacheKey: nil,
+                requestKind: .main,
+                strategy: .none,
+                contextTokensBefore: 0,
+                contextTokensAfter: 0,
+                startedAt: Date()
+            )
+        }
+
+        // Newly processed input is (100 - 70 cached + 10 written) and
+        // (50 - 20 cached + 5 written), plus 15 output tokens.
+        XCTAssertEqual(host.activeRunTokenCount, 75)
+        XCTAssertEqual(host.activeRunUncachedInputTokenCount, 25, "the latest request input is distinct from the run total")
+        XCTAssertFalse(host.activeRunTokenCountIncludesEstimate)
+
+        let estimatedComposition = AgentContextInputComposition(
+            messages: [AgentMessage(role: .user, content: String(repeating: "estimated prompt ", count: 20))],
+            tools: []
+        )
+        let estimatedInputTokens = estimatedComposition.estimatedTotalTokens
+        XCTAssertGreaterThan(estimatedInputTokens, 0)
+        let responseWithZeroReportedInput = AgentResponse(
+            message: AgentMessage(role: .assistant, content: "ok"),
+            usage: AgentUsage(inputTokens: 0, outputTokens: 2, cachedTokens: 0, cacheWriteTokens: 0)
+        )
+        host.recordContextUsage(
+            responseWithZeroReportedInput,
+            conversationID: conversationID,
+            configuration: configuration,
+            cacheKey: nil,
+            requestKind: .main,
+            strategy: .none,
+            contextTokensBefore: 0,
+            contextTokensAfter: 0,
+            startedAt: Date(),
+            inputComposition: estimatedComposition
+        )
+        XCTAssertEqual(host.activeRunTokenCount, 77 + estimatedInputTokens)
+        XCTAssertTrue(host.activeRunTokenCountIncludesEstimate)
+
+        let responseWithoutCacheBreakdown = AgentResponse(
+            message: AgentMessage(role: .assistant, content: "ok"),
+            usage: AgentUsage(inputTokens: 40, outputTokens: 3)
+        )
+        host.recordContextUsage(
+            responseWithoutCacheBreakdown,
+            conversationID: conversationID,
+            configuration: configuration,
+            cacheKey: nil,
+            requestKind: .main,
+            strategy: .none,
+            contextTokensBefore: 0,
+            contextTokensAfter: 0,
+            startedAt: Date()
+        )
+        XCTAssertEqual(host.activeRunTokenCount, 120 + estimatedInputTokens)
+        XCTAssertEqual(host.activeRunUncachedInputTokenCount, 40)
+        XCTAssertTrue(host.activeRunTokenCountIncludesEstimate)
+    }
 }

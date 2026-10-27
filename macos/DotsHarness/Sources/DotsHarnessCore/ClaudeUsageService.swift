@@ -48,17 +48,21 @@ public struct AccountUsageSnapshot: Equatable, Sendable {
     /// Per-window detail (5h / weekly) when the provider reports it.
     public var windows: [ClaudeUsageWindow]
     public var resetsAvailable: Int?
+    /// Per-model share left, when the provider meters each model apart (Google Code Assist).
+    public var models: [String: Double]
 
     public init(
         remainingFraction: Double?,
         resetsAt: Date? = nil,
         windows: [ClaudeUsageWindow] = [],
-        resetsAvailable: Int? = nil
+        resetsAvailable: Int? = nil,
+        models: [String: Double] = [:]
     ) {
         self.remainingFraction = remainingFraction
         self.resetsAt = resetsAt
         self.windows = windows
         self.resetsAvailable = resetsAvailable
+        self.models = models
     }
 }
 
@@ -400,14 +404,19 @@ extension RouterController {
             }
             return
         }
-        guard account.provider == "claude" || account.authType == "chatgpt" else {
-            if accountUsage[account.id] == nil {
+        guard Self.hasUsageEndpoint(account) else {
+            // Read off the last completion's rate-limit headers (`recordHeaderUsage`);
+            // that reading means nothing once its window resets.
+            if accountUsage[account.id] == nil
+                || accountUsage[account.id]?.resetsAt.map({ $0 <= Date() }) == true {
                 storeAccountUsage(account.id, AccountUsageSnapshot(remainingFraction: nil))
             }
             return
         }
         do {
-            if account.provider == "claude" {
+            if Self.isCodeAssist(account) {
+                storeAccountUsage(account.id, try await codeAssistUsage(for: account))
+            } else if account.provider == "claude" {
                 let usage = try await claudeUsage(for: account)
                 storeClaudeUsage(usage, for: account)
             } else {
@@ -443,5 +452,77 @@ extension RouterController {
             guard await refreshCredential(for: account) else { throw ClaudeUsageError.unauthorized }
             return try await loadChatGPTUsage(account: account, allowRefresh: false)
         }
+    }
+}
+
+extension RouterController {
+    static func isCodeAssist(_ account: StoredProviderAccount) -> Bool {
+        account.api == RouterAPIKind.geminiCLI.rawValue && ["gemini-cli", "antigravity"].contains(account.provider)
+    }
+
+    /// Accounts whose provider answers a usage request. The rest learn their
+    /// quota from completion headers only.
+    static func hasUsageEndpoint(_ account: StoredProviderAccount) -> Bool {
+        account.provider == "claude" || account.authType == "chatgpt" || isCodeAssist(account)
+    }
+
+    /// Records the rate-limit headers of a completion for an account no usage
+    /// endpoint covers (Grok Build and other subscription routes).
+    /// ponytail: `x-ratelimit-*` meter a short window, not the plan's quota; a
+    /// provider usage endpoint should replace this once one is published.
+    func recordHeaderUsage(_ remaining: Double?, resetsAt: Date?, for account: StoredProviderAccount) {
+        guard let remaining, !Self.hasUsageEndpoint(account) else { return }
+        storeAccountUsage(account.id, AccountUsageSnapshot(
+            remainingFraction: remaining,
+            resetsAt: resetsAt ?? Date().addingTimeInterval(60)
+        ))
+    }
+
+    /// Gemini CLI's `retrieveUserQuota` and Antigravity's `fetchAvailableModels`
+    /// meter each model apart; the same request already lists the account's models.
+    private func codeAssistUsage(for account: StoredProviderAccount) async throws -> AccountUsageSnapshot {
+        guard let request = modelCatalogRequest(for: account) else { return AccountUsageSnapshot(remainingFraction: nil) }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true else {
+            return AccountUsageSnapshot(remainingFraction: nil)
+        }
+        return Self.codeAssistQuota(data)
+    }
+
+    /// `{"buckets":[{"modelId","remainingFraction","resetTime"}]}` or
+    /// `{"models":{"<id>":{"quotaInfo":{"remainingFraction","resetTime"}}}}`.
+    nonisolated static func codeAssistQuota(_ data: Data) -> AccountUsageSnapshot {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return AccountUsageSnapshot(remainingFraction: nil)
+        }
+        var rows: [(String, [String: Any])] = []
+        if let buckets = root["buckets"] as? [[String: Any]] {
+            rows = buckets.compactMap { row in (row["modelId"] as? String).map { ($0, row) } }
+        } else if let models = root["models"] as? [String: Any] {
+            rows = models.compactMap { id, value in
+                ((value as? [String: Any])?["quotaInfo"] as? [String: Any]).map { (id, $0) }
+            }
+        }
+        var models: [String: Double] = [:]
+        var resets: [Date] = []
+        for (id, row) in rows {
+            // Antigravity omits `remainingFraction` once a model is spent.
+            let fraction = (row["remainingFraction"] as? NSNumber)?.doubleValue ?? 0
+            models[id] = min(models[id] ?? 1, min(max(fraction, 0), 1))
+            if let raw = row["resetTime"] as? String, let date = ISO8601DateFormatter.withFractions(raw) { resets.append(date) }
+        }
+        return AccountUsageSnapshot(
+            remainingFraction: models.values.max(),
+            resetsAt: resets.min(),
+            models: models
+        )
+    }
+}
+
+private extension ISO8601DateFormatter {
+    static func withFractions(_ raw: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
     }
 }

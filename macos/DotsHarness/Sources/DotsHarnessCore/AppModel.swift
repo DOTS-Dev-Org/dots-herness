@@ -794,7 +794,6 @@ public final class AppModel: ObservableObject {
         }
         bridge.onAttentionNeeded = attentionNeeded
         bridge.onPlanAutoApproved = { [weak self] in self?.endPlanMode() }
-        bridge.onPlanModeEntered = { [weak self] in self?.isPlanMode = true }
         let connectionChanged: (ConnectionTransition) -> Void = { [weak self, weak remoteControl] transition in
             self?.desktopNotifications.showConnectionChange(transition)
             remoteControl?.publish("connection.changed", [

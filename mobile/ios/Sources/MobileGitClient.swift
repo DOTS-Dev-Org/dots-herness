@@ -8,6 +8,26 @@ struct MobileGitResult: Sendable {
     var unavailable: Bool { code == Int32(HERNESS_GIT_UNAVAILABLE) }
 }
 
+struct MobileGitBranchSnapshot: Equatable, Sendable {
+    let currentBranch: String?
+    let branches: [String]
+
+    static func parse(_ output: String) -> MobileGitBranchSnapshot {
+        var currentBranch: String?
+        var branches: [String] = []
+        for line in output.components(separatedBy: .newlines) {
+            if line.hasPrefix("current\t") {
+                let name = String(line.dropFirst("current\t".count))
+                currentBranch = name.isEmpty ? nil : name
+            } else if line.hasPrefix("branch\t") {
+                let name = String(line.dropFirst("branch\t".count))
+                if !name.isEmpty { branches.append(name) }
+            }
+        }
+        return MobileGitBranchSnapshot(currentBranch: currentBranch, branches: branches)
+    }
+}
+
 /// Small Swift boundary over the C ABI. The token is passed only for the
 /// duration of the libgit2 call and is never put in a URL or Git config.
 final class MobileGitClient: @unchecked Sendable {
@@ -20,6 +40,12 @@ final class MobileGitClient: @unchecked Sendable {
     }
 
     var available: Bool { herness_git_available() != 0 }
+
+    func branchSnapshot() async -> MobileGitBranchSnapshot? {
+        let result = await execute(operation: "branches")
+        guard result.succeeded else { return nil }
+        return MobileGitBranchSnapshot.parse(result.output)
+    }
 
     func execute(operation: String, arguments: [String: String] = [:]) async -> MobileGitResult {
         let workspaceRoot = self.root.resolvingSymlinksInPath().standardizedFileURL
@@ -84,6 +110,10 @@ final class MobileGitClient: @unchecked Sendable {
 
     func fetch() async throws { try await require("fetch") }
     func checkout(branch: String) async throws { try await require("checkout", argument: branch) }
+    func createBranch(_ branch: String) async throws {
+        try await require("create_branch", argument: branch)
+        try await checkout(branch: branch)
+    }
     func commit(message: String, authorName: String, authorEmail: String) async throws {
         try await require("commit", argument: message, authorName: authorName, authorEmail: authorEmail)
     }

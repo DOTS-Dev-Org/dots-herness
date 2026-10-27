@@ -3,6 +3,8 @@ import CryptoKit
 import Foundation
 import AVKit
 import UIKit
+import UserNotifications
+import Vision
 
 // MARK: - Mobile media studio
 
@@ -12,6 +14,10 @@ private struct MobileMediaAsset: Codable, Identifiable, Equatable {
     var kind: String
     var prompt: String
     var createdAt: Date
+    var favorite: Bool? = nil
+    var folder: String? = nil
+    var tags: [String]? = nil
+    var ocrText: String? = nil
 }
 
 private struct MobileMediaLayer: Codable, Identifiable, Equatable {
@@ -30,6 +36,14 @@ private struct MobileMediaLayer: Codable, Identifiable, Equatable {
     var cornerRadius: Double? = nil
     var alignment: String? = nil
     var fontWeight: String? = nil
+    var cropX: Double? = nil
+    var cropY: Double? = nil
+    var cropWidth: Double? = nil
+    var cropHeight: Double? = nil
+    var strokeWidth: Double? = nil
+    var points: [Double]? = nil
+    var arrow: Bool? = nil
+    var opacity: Double? = nil
 }
 
 private struct MobileMusicTrack: Codable, Identifiable, Equatable {
@@ -82,16 +96,59 @@ private struct MobileMediaTemplate: Identifiable {
     let background: String
     let accent: String
     let foreground: String
+    var remoteTitle: String? = nil
+    var cloudCanvas: MobileCloudTemplateCanvas? = nil
     var titleKey: String { "studio.template.\(id)" }
+    @MainActor func title(_ localization: MobileLocalization) -> String { remoteTitle ?? localization.text(titleKey) }
 
-    static let all = [
-        MobileMediaTemplate(id: "announcement", category: "social", presetID: "square", background: "#14213D", accent: "#FCA311", foreground: "#FFFFFF"),
-        MobileMediaTemplate(id: "story", category: "social", presetID: "story", background: "#F1FAEE", accent: "#E63946", foreground: "#FFFFFF"),
-        MobileMediaTemplate(id: "thumbnail", category: "social", presetID: "thumbnail", background: "#0B132B", accent: "#5BC0BE", foreground: "#FFFFFF"),
-        MobileMediaTemplate(id: "mobile", category: "uiux", presetID: "mobile", background: "#F8FAFC", accent: "#4F46E5", foreground: "#0F172A"),
-        MobileMediaTemplate(id: "slide", category: "presentation", presetID: "landscape", background: "#FAFAFA", accent: "#2A9D8F", foreground: "#264653"),
-        MobileMediaTemplate(id: "logo", category: "other", presetID: "logo", background: "#FFFFFF", accent: "#3D5A80", foreground: "#293241"),
-    ]
+    static let all: [MobileMediaTemplate] = []
+}
+
+private struct MobileCloudTemplateManifest: Decodable {
+    let version: Int
+    let templates: [MobileCloudTemplate]
+}
+
+private struct MobileCloudTemplate: Decodable {
+    let id: String
+    let category: String
+    let presetId: String
+    let titles: [String: String]
+    let canvas: MobileCloudTemplateCanvas
+}
+
+private struct MobileCloudTemplateCanvas: Decodable {
+    let name: String
+    let width: Double
+    let height: Double
+    let backgroundHex: String
+    let layers: [MobileCloudTemplateLayer]
+}
+
+private struct MobileCloudTemplateLayer: Decodable {
+    let id: String
+    let name: String
+    let kind: String
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+    let opacity: Double
+    let text: String
+    let fontSize: Double
+    let fontWeight: String
+    let alignment: String
+    let colorHex: String
+    let shape: String
+    let cornerRadius: Double
+    let assetName: String?
+    let strokeWidth: Double
+    let points: [Double]
+    let arrow: Bool
+    let cropX: Double?
+    let cropY: Double?
+    let cropWidth: Double?
+    let cropHeight: Double?
 }
 
 private enum MobileMediaType: String, CaseIterable, Identifiable {
@@ -135,13 +192,24 @@ struct MobileMediaStudioView: View {
     @State private var renameTarget: MobileMediaProject?
     @State private var renameText = ""
     @State private var selectedLayerID: String?
+    @State private var drawingTool: String?
+    @State private var draftAnnotationPoints: [CGPoint] = []
     @State private var editingLayerID: String?
     @State private var editingLayerText = ""
     @State private var musicEngine: AVAudioEngine?
     @State private var musicPlayers: [String: AVAudioPlayerNode] = [:]
     @State private var shareURL: MobileShareURL?
     @State private var projectQuery = ""
+    @State private var libraryQuery = ""
+    @State private var libraryKind: String?
+    @State private var libraryFolder: String?
+    @State private var favoritesOnly = false
+    @State private var selectedLibraryIDs: Set<String> = []
+    @State private var exportingLibrary = false
+    @State private var bulkExportURLs: [URL] = []
+    @State private var ocrRunningID: String?
     @State private var templateCategory = "social"
+    @State private var templates = MobileMediaTemplate.all
     @State private var sortByName = false
     @AppStorage("media.home.starred") private var starredRaw = ""
 
@@ -155,7 +223,7 @@ struct MobileMediaStudioView: View {
         return sortByName ? filtered.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending } : filtered.sorted { $0.updatedAt > $1.updatedAt }
     }
     private var visibleTemplates: [MobileMediaTemplate] {
-        MobileMediaTemplate.all.filter { $0.category == templateCategory && (projectQuery.isEmpty || localization.text($0.titleKey).localizedCaseInsensitiveContains(projectQuery)) }
+        templates.filter { $0.category == templateCategory && (projectQuery.isEmpty || $0.title(localization).localizedCaseInsensitiveContains(projectQuery)) }
     }
 
     var body: some View {
@@ -171,6 +239,10 @@ struct MobileMediaStudioView: View {
             }
         }
         .task(id: local.selectedProjectID) { load() }
+        .task(id: tab) {
+            guard tab == "templates" else { return }
+            templates = await loadTemplateCatalog()
+        }
         .onChange(of: selectedAsset?.id) { _, _ in
             assetPlayer?.pause()
             guard let asset = selectedAsset, asset.kind != "image" else { assetPlayer = nil; return }
@@ -179,6 +251,7 @@ struct MobileMediaStudioView: View {
         }
         .sheet(isPresented: $showingSettings) { mediaSettings }
         .sheet(item: $shareURL) { item in MobileShareSheet(items: [item.url]) }
+        .sheet(isPresented: $exportingLibrary) { MobileShareSheet(items: bulkExportURLs) }
         .onDisappear { stopMusicMix() }
         .alert(localization.text("studio.rename"), isPresented: Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })) {
             TextField(localization.text("studio.projectName"), text: $renameText)
@@ -348,17 +421,60 @@ struct MobileMediaStudioView: View {
     }
 
     private func templateCard(_ template: MobileMediaTemplate) -> some View {
-        let preset = MobileMediaPreset.all.first { $0.id == template.presetID }!
+        let preset = MobileMediaPreset.all.first { $0.id == template.presetID } ?? MobileMediaPreset.all[0]
+        let width = Int(template.cloudCanvas?.width ?? Double(preset.width))
+        let height = Int(template.cloudCanvas?.height ?? Double(preset.height))
         return Button { createTemplate(template) } label: {
             VStack(alignment: .leading, spacing: 10) {
                 RoundedRectangle(cornerRadius: 10).fill(Color(hex: template.background))
                     .overlay(alignment: .bottom) { Rectangle().fill(Color(hex: template.accent)).frame(height: 16) }
                     .frame(height: 74)
-                Text(localization.text(template.titleKey)).font(.headline).lineLimit(1)
-                Text("\(preset.width) × \(preset.height)").font(.caption).foregroundStyle(.secondary)
+                Text(template.title(localization)).font(.headline).lineLimit(1)
+                Text("\(width) × \(height)").font(.caption).foregroundStyle(.secondary)
             }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
         }.buttonStyle(.plain)
+    }
+
+    private func loadTemplateCatalog() async -> [MobileMediaTemplate] {
+        let cacheURL = local.root.appendingPathComponent(".herness/media-studio/template-catalog.json")
+        var manifest: MobileCloudTemplateManifest?
+        if let url = URL(string: "https://dotsherness-unified-backend.dotsherness-unified-backend.workers.dev/assets/media-templates/manifest.json") {
+            var request = URLRequest(url: url, timeoutInterval: 8)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            if let (data, response) = try? await URLSession.shared.data(for: request),
+               (response as? HTTPURLResponse)?.statusCode == 200,
+               let decoded = try? JSONDecoder().decode(MobileCloudTemplateManifest.self, from: data),
+               decoded.version == 1, !decoded.templates.isEmpty {
+                manifest = decoded
+                try? FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? data.write(to: cacheURL, options: .atomic)
+            }
+        }
+        if manifest == nil, let data = try? Data(contentsOf: cacheURL),
+           let decoded = try? JSONDecoder().decode(MobileCloudTemplateManifest.self, from: data),
+           decoded.version == 1, !decoded.templates.isEmpty {
+            manifest = decoded
+        }
+        guard let manifest else { return [] }
+        let language = localization.effective.rawValue.lowercased()
+        return manifest.templates.map { item in
+            let title = item.titles[language]
+                ?? item.titles[language.split(separator: "-").first.map(String.init) ?? language]
+                ?? item.titles["en"]
+                ?? item.id
+            let accent = item.canvas.layers.first(where: { $0.kind == "shape" && $0.colorHex != item.canvas.backgroundHex })?.colorHex ?? item.canvas.backgroundHex
+            return MobileMediaTemplate(
+                id: item.id,
+                category: item.category,
+                presetID: item.presetId,
+                background: item.canvas.backgroundHex,
+                accent: accent,
+                foreground: "#FFFFFF",
+                remoteTitle: title,
+                cloudCanvas: item.canvas
+            )
+        }
     }
 
     private func toggleProjectStar(_ id: String) {
@@ -377,6 +493,9 @@ struct MobileMediaStudioView: View {
                         .buttonStyle(.bordered)
                     layerToolbar(project)
                     canvasEditor(project)
+                    if let selected = (project.layers ?? []).first(where: { $0.id == selectedLayerID && $0.kind == "image" }) {
+                        imageCropControls(selected, in: project)
+                    }
                     layerList(project)
                     generationPanel(project: project, musicMode: false)
                     assetGrid(project.assets.sorted { $0.createdAt > $1.createdAt })
@@ -505,7 +624,11 @@ struct MobileMediaStudioView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 Button { addLayer(kind: "text", to: project) } label: { Label(localization.text("studio.layer.text"), systemImage: "textformat") }
-                Button { addLayer(kind: "shape", to: project) } label: { Label(localization.text("studio.layer.shape"), systemImage: "square") }
+                Button { addLayer(kind: "shape", to: project, shape: "rectangle") } label: { Label(localization.text("studio.shape.rectangle"), systemImage: "square") }
+                Button { addLayer(kind: "shape", to: project, shape: "ellipse") } label: { Label(localization.text("studio.shape.ellipse"), systemImage: "circle") }
+                Button { drawingTool = drawingTool == "pen" ? nil : "pen" } label: { Label(localization.text("studio.markup.pen"), systemImage: "pencil.tip") }.tint(drawingTool == "pen" ? .accentColor : nil)
+                Button { drawingTool = drawingTool == "marker" ? nil : "marker" } label: { Label(localization.text("studio.markup.marker"), systemImage: "highlighter") }.tint(drawingTool == "marker" ? .accentColor : nil)
+                Button { drawingTool = drawingTool == "arrow" ? nil : "arrow" } label: { Label(localization.text("studio.markup.arrow"), systemImage: "arrow.up.right") }.tint(drawingTool == "arrow" ? .accentColor : nil)
                 if let selectedLayerID {
                     Button { editLayer(selectedLayerID, in: project) } label: { Label(localization.text("studio.layer.text"), systemImage: "pencil") }
                     Button { moveLayer(selectedLayerID, toFront: true, in: project) } label: { Image(systemName: "square.3.layers.3d.top.filled") }.accessibilityLabel(localization.text("studio.layer.front"))
@@ -534,7 +657,10 @@ struct MobileMediaStudioView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if layer.kind == "image", let path = layer.assetPath,
                               let image = UIImage(contentsOfFile: local.root.appendingPathComponent(path).path) {
-                        Image(uiImage: image).resizable().scaledToFit()
+                        Image(uiImage: Self.croppedImage(image, layer: layer)).resizable().scaledToFit()
+                    } else if layer.kind == "path" {
+                        MobileMediaPath(points: layer.points ?? [], arrow: layer.arrow ?? false)
+                            .stroke(Color(hex: layer.colorHex).opacity(layer.opacity ?? 1), style: StrokeStyle(lineWidth: CGFloat(layer.strokeWidth ?? 8) * scale, lineCap: .round, lineJoin: .round))
                     } else {
                         if layer.shape == "ellipse" {
                             Ellipse().fill(Color(hex: layer.colorHex))
@@ -558,12 +684,43 @@ struct MobileMediaStudioView: View {
                 })
                 .onTapGesture { selectedLayerID = layer.id }
             }
+            if let drawingTool {
+                Color.clear.contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let point = CGPoint(x: min(max(value.location.x, 0), boardWidth), y: min(max(value.location.y, 0), boardHeight))
+                            if drawingTool == "arrow" { draftAnnotationPoints = draftAnnotationPoints.first.map { [$0, point] } ?? [point] }
+                            else if draftAnnotationPoints.last.map({ hypot($0.x - point.x, $0.y - point.y) > 2 }) ?? true { draftAnnotationPoints.append(point) }
+                        }
+                        .onEnded { _ in
+                            let points = draftAnnotationPoints.map { [Double($0.x / boardWidth), Double($0.y / boardHeight)] }.flatMap { $0 }
+                            addAnnotation(drawingTool, points: points, to: project)
+                            draftAnnotationPoints = []
+                        }
+                    )
+                MobileMediaPath(points: draftAnnotationPoints.map { [Double($0.x / boardWidth), Double($0.y / boardHeight)] }.flatMap { $0 }, arrow: drawingTool == "arrow")
+                    .stroke(drawingTool == "marker" ? Color.yellow.opacity(0.45) : Color.orange, style: StrokeStyle(lineWidth: drawingTool == "marker" ? 28 * scale : 8 * scale, lineCap: .round, lineJoin: .round))
+                    .allowsHitTesting(false)
+            }
         }
         .frame(width: boardWidth, height: boardHeight)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.16)))
         .frame(maxWidth: .infinity)
         .accessibilityLabel(localization.text("studio.layers"))
+    }
+
+    private func addAnnotation(_ tool: String, points: [Double], to project: MobileMediaProject) {
+        guard points.count >= 4 else { drawingTool = nil; return }
+        let layer = MobileMediaLayer(
+            id: UUID().uuidString, kind: "path", name: localization.text("studio.markup.\(tool)"),
+            x: 0, y: 0, width: Double(project.width), height: Double(project.height), text: "",
+            colorHex: tool == "marker" ? "#FFD400" : "#F29A38", assetPath: nil, fontSize: 1, strokeWidth: tool == "marker" ? 28 : 8,
+            points: points, arrow: tool == "arrow", opacity: tool == "marker" ? 0.45 : 1
+        )
+        updateProject(project.id) { $0.layers = ($0.layers ?? []) + [layer] }
+        selectedLayerID = layer.id
+        drawingTool = nil
     }
 
     private func layerList(_ project: MobileMediaProject) -> some View {
@@ -585,12 +742,12 @@ struct MobileMediaStudioView: View {
         }
     }
 
-    private func addLayer(kind: String, to project: MobileMediaProject) {
+    private func addLayer(kind: String, to project: MobileMediaProject, shape: String? = nil) {
         let layer = MobileMediaLayer(
             id: UUID().uuidString, kind: kind, name: localization.text(kind == "text" ? "studio.layer.text" : "studio.layer.shape"),
             x: Double(project.width) * 0.15, y: Double(project.height) * 0.4,
             width: Double(project.width) * 0.7, height: Double(project.height) * 0.2,
-            text: kind == "text" ? localization.text("studio.layer.text") : "", colorHex: kind == "text" ? "#111111" : "#F29A38", fontSize: Double(project.width) * 0.075
+            text: kind == "text" ? localization.text("studio.layer.text") : "", colorHex: kind == "text" ? "#111111" : "#F29A38", fontSize: Double(project.width) * 0.075, shape: shape
         )
         updateProject(project.id) { $0.layers = ($0.layers ?? []) + [layer] }
         selectedLayerID = layer.id
@@ -620,6 +777,76 @@ struct MobileMediaStudioView: View {
             layers[index].y = min(max(0, layers[index].y + dy), Double(value.height) - layers[index].height)
             value.layers = layers
         }
+    }
+
+    private func imageCropControls(_ layer: MobileMediaLayer, in project: MobileMediaProject) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localization.text("studio.crop")).font(.headline)
+            HStack {
+                cropPreset("studio.crop.free", ratio: nil, layer: layer, project: project)
+                cropPreset("studio.crop.square", ratio: 1, layer: layer, project: project)
+                cropPreset("studio.crop.landscape", ratio: 16.0 / 9.0, layer: layer, project: project)
+                cropPreset("studio.crop.portrait", ratio: 9.0 / 16.0, layer: layer, project: project)
+            }
+            cropSlider("X", value: layer.cropX ?? 0, range: 0...max(0.001, 1 - (layer.cropWidth ?? 1))) { value in updateCrop(layer.id, in: project) { $0.cropX = value } }
+            cropSlider("Y", value: layer.cropY ?? 0, range: 0...max(0.001, 1 - (layer.cropHeight ?? 1))) { value in updateCrop(layer.id, in: project) { $0.cropY = value } }
+            cropSlider("W", value: layer.cropWidth ?? 1, range: 0.05...max(0.05, 1 - (layer.cropX ?? 0))) { value in updateCrop(layer.id, in: project) { $0.cropWidth = value } }
+            cropSlider("H", value: layer.cropHeight ?? 1, range: 0.05...max(0.05, 1 - (layer.cropY ?? 0))) { value in updateCrop(layer.id, in: project) { $0.cropHeight = value } }
+        }
+        .padding(12)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func cropSlider(_ title: String, value: Double, range: ClosedRange<Double>, set: @escaping (Double) -> Void) -> some View {
+        HStack(spacing: 8) {
+            Text(title).font(.caption).frame(width: 18, alignment: .leading)
+            Slider(value: Binding(get: { value }, set: set), in: range)
+            Text("\(Int((value * 100).rounded()))%").font(.caption.monospacedDigit()).frame(width: 38, alignment: .trailing)
+        }
+    }
+
+    private func cropPreset(_ title: String, ratio: Double?, layer: MobileMediaLayer, project: MobileMediaProject) -> some View {
+        Button(localization.text(title)) {
+            guard let ratio else { updateCrop(layer.id, in: project) { $0.cropX = nil; $0.cropY = nil; $0.cropWidth = nil; $0.cropHeight = nil }; return }
+            let source = layer.assetPath.flatMap { UIImage(contentsOfFile: local.root.appendingPathComponent($0).path) }
+            let sourceAspect = source?.cgImage.map { Double($0.width) / Double(max($0.height, 1)) } ?? ratio
+            let normalized = ratio / max(sourceAspect, 0.001)
+            let width = normalized >= 1 ? 1 : normalized
+            let height = normalized >= 1 ? 1 / normalized : 1
+            updateCrop(layer.id, in: project) { $0.cropX = (1 - width) / 2; $0.cropY = (1 - height) / 2; $0.cropWidth = width; $0.cropHeight = height }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+    }
+
+    private func updateCrop(_ id: String, in project: MobileMediaProject, change: (inout MobileMediaLayer) -> Void) {
+        updateProject(project.id) { value in
+            var layers = value.layers ?? []
+            guard let index = layers.firstIndex(where: { $0.id == id }) else { return }
+            change(&layers[index])
+            if layers[index].cropX == nil && layers[index].cropY == nil && layers[index].cropWidth == nil && layers[index].cropHeight == nil {
+                value.layers = layers
+                return
+            }
+            let x = min(max(layers[index].cropX ?? 0, 0), 0.95)
+            let y = min(max(layers[index].cropY ?? 0, 0), 0.95)
+            layers[index].cropX = x; layers[index].cropY = y
+            layers[index].cropWidth = min(max(layers[index].cropWidth ?? 1, 0.05), 1 - x)
+            layers[index].cropHeight = min(max(layers[index].cropHeight ?? 1, 0.05), 1 - y)
+            value.layers = layers
+        }
+    }
+
+    private static func croppedImage(_ source: UIImage, layer: MobileMediaLayer) -> UIImage {
+        guard layer.cropX != nil || layer.cropY != nil || layer.cropWidth != nil || layer.cropHeight != nil,
+              let image = source.cgImage else { return source }
+        let x = min(max(layer.cropX ?? 0, 0), 0.999)
+        let y = min(max(layer.cropY ?? 0, 0), 0.999)
+        let width = min(max(layer.cropWidth ?? 1, 0.001), 1 - x)
+        let height = min(max(layer.cropHeight ?? 1, 0.001), 1 - y)
+        let rect = CGRect(x: x * Double(image.width), y: y * Double(image.height), width: width * Double(image.width), height: height * Double(image.height)).integral
+        guard let cropped = image.cropping(to: rect) else { return source }
+        return UIImage(cgImage: cropped, scale: source.scale, orientation: source.imageOrientation)
     }
 
     private func moveLayer(_ id: String, toFront: Bool, in project: MobileMediaProject) {
@@ -667,7 +894,32 @@ struct MobileMediaStudioView: View {
                 case "image":
                     if let path = layer.assetPath,
                        let source = UIImage(contentsOfFile: local.root.appendingPathComponent(path).path) {
-                        source.draw(in: rect)
+                        Self.croppedImage(source, layer: layer).draw(in: rect)
+                    }
+                case "path":
+                    let points = layer.points ?? []
+                    if points.count >= 4 {
+                        context.saveGState()
+                        context.setStrokeColor(Self.uiColor(hex: layer.colorHex).withAlphaComponent(CGFloat(layer.opacity ?? 1)).cgColor)
+                        context.setLineWidth(layer.strokeWidth ?? 8)
+                        context.setLineCap(.round)
+                        context.setLineJoin(.round)
+                        context.beginPath()
+                        context.move(to: CGPoint(x: rect.minX + CGFloat(points[0]) * rect.width, y: rect.minY + CGFloat(points[1]) * rect.height))
+                        for index in stride(from: 2, to: points.count, by: 2) { context.addLine(to: CGPoint(x: rect.minX + CGFloat(points[index]) * rect.width, y: rect.minY + CGFloat(points[index + 1]) * rect.height)) }
+                        context.strokePath()
+                        if layer.arrow == true, points.count >= 4 {
+                            let tip = CGPoint(x: rect.minX + CGFloat(points[points.count - 2]) * rect.width, y: rect.minY + CGFloat(points[points.count - 1]) * rect.height)
+                            let previous = CGPoint(x: rect.minX + CGFloat(points[points.count - 4]) * rect.width, y: rect.minY + CGFloat(points[points.count - 3]) * rect.height)
+                            let angle = atan2(tip.y - previous.y, tip.x - previous.x)
+                            let head = CGFloat(max(layer.strokeWidth ?? 8, 1) * 3)
+                            for side: CGFloat in [-1, 1] {
+                                context.beginPath(); context.move(to: tip)
+                                context.addLine(to: CGPoint(x: tip.x - cos(angle + side * 0.55) * head, y: tip.y - sin(angle + side * 0.55) * head))
+                                context.strokePath()
+                            }
+                        }
+                        context.restoreGState()
                     }
                 default:
                     color.setFill()
@@ -744,38 +996,148 @@ struct MobileMediaStudioView: View {
     }
 
     private func assetGrid(_ assets: [MobileMediaAsset]) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
-            ForEach(assets) { asset in
-                Button { selectedAsset = asset } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if asset.kind == "image", let image = UIImage(contentsOfFile: local.root.appendingPathComponent(asset.path).path) {
-                            Image(uiImage: image).resizable().scaledToFill().frame(height: 130).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
-                        } else {
-                            Label(localization.text("media.\(asset.kind)"), systemImage: asset.kind == "video" ? "video" : "waveform")
-                                .frame(maxWidth: .infinity, minHeight: 130).background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
-                        }
-                        Text(asset.prompt).font(.caption).lineLimit(2).foregroundStyle(.primary)
+        let visible = assets.filter { asset in
+            (libraryKind == nil || asset.kind == libraryKind)
+                && (libraryFolder.map { (asset.folder ?? "") == $0 } ?? true)
+                && (!favoritesOnly || asset.favorite == true)
+                && (libraryQuery.isEmpty || [asset.prompt, asset.folder ?? "", asset.ocrText ?? "", (asset.tags ?? []).joined(separator: " ")].joined(separator: " ").localizedCaseInsensitiveContains(libraryQuery))
+        }
+        return VStack(alignment: .leading, spacing: 12) {
+            TextField(localization.text("library.searchAll"), text: $libraryQuery).textFieldStyle(.roundedBorder)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    libraryFilter(localization.text("library.all"), selected: libraryKind == nil) { libraryKind = nil }
+                    ForEach(["image", "video", "audio", "music"], id: \.self) { value in
+                        libraryFilter(localization.text("media.\(value)"), selected: libraryKind == value) { libraryKind = value }
                     }
-                }.buttonStyle(.plain)
+                    libraryFilter(localization.text("library.favorites"), selected: favoritesOnly) { favoritesOnly.toggle() }
+                    libraryFilter(localization.text("library.selectAll"), selected: false) { selectedLibraryIDs = Set(visible.map(\.id)) }
+                    if !selectedLibraryIDs.isEmpty {
+                        Button(localization.text("library.exportSelected")) {
+                            bulkExportURLs = assets.filter { selectedLibraryIDs.contains($0.id) }.map { local.root.appendingPathComponent($0.path) }
+                            exportingLibrary = !bulkExportURLs.isEmpty
+                        }
+                        Button(localization.text("library.deselectAll")) { selectedLibraryIDs.removeAll() }
+                    }
+                }
+            }
+            let folders = Array(Set(assets.map { $0.folder ?? "" })).filter { !$0.isEmpty }.sorted()
+            if !folders.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        libraryFilter(localization.text("library.allFolders"), selected: libraryFolder == nil) { libraryFolder = nil }
+                        ForEach(folders, id: \.self) { folder in
+                            libraryFilter(folder, selected: libraryFolder == folder) { libraryFolder = folder }
+                        }
+                    }
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
+                ForEach(visible) { asset in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button { selectedAsset = asset } label: {
+                            if asset.kind == "image", let image = UIImage(contentsOfFile: local.root.appendingPathComponent(asset.path).path) {
+                                Image(uiImage: image).resizable().scaledToFill().frame(height: 130).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
+                            } else {
+                                Label(localization.text("media.\(asset.kind)"), systemImage: asset.kind == "video" ? "video" : "waveform")
+                                    .frame(maxWidth: .infinity, minHeight: 130).background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                            }
+                        }.buttonStyle(.plain)
+                        HStack {
+                            Text(asset.prompt).font(.caption).lineLimit(2).foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
+                            Button { toggleLibrarySelection(asset) } label: { Image(systemName: selectedLibraryIDs.contains(asset.id) ? "checkmark.circle.fill" : "circle") }
+                            Button { updateAsset(asset.id) { $0.favorite = !($0.favorite ?? false) } } label: { Image(systemName: asset.favorite == true ? "star.fill" : "star") }
+                                .tint(asset.favorite == true ? .yellow : .accentColor)
+                        }
+                        if !(asset.folder ?? "").isEmpty || !(asset.tags ?? []).isEmpty {
+                            Text(([asset.folder].compactMap { $0?.isEmpty == false ? $0 : nil } + (asset.tags ?? []).map { "#\($0)" }).joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                }
             }
         }
     }
 
+    private func libraryFilter(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action).buttonStyle(.bordered).tint(selected ? .accentColor : .secondary)
+    }
+
     private func assetDetail(_ asset: MobileMediaAsset) -> some View {
         NavigationStack {
+            ScrollView {
             VStack(spacing: 12) {
                 if asset.kind == "image", let image = UIImage(contentsOfFile: local.root.appendingPathComponent(asset.path).path) {
                     Image(uiImage: image).resizable().scaledToFit()
                 } else if let player = assetPlayer {
-                    VideoPlayer(player: player).frame(minHeight: 280)
+                    MobileVideoTrimPanel(
+                        url: local.root.appendingPathComponent(asset.path), player: player,
+                        trimTitle: localization.text("studio.video.trimExport"), cancelTitle: localization.text("common.cancel"),
+                        doneTitle: localization.text("common.done"), alertTitle: localization.text("studio.video.trim"),
+                        unavailableMessage: localization.text("studio.video.trimUnavailable"), failedMessage: localization.text("studio.video.trimFailed")
+                    ) { output in
+                        saveTrimmedVideo(output, source: asset)
+                    }
                 } else {
                     Text(asset.path).font(.footnote.monospaced()).textSelection(.enabled)
                 }
                 Text(asset.prompt).font(.callout).frame(maxWidth: .infinity, alignment: .leading)
+                Toggle(localization.text("library.favorite"), isOn: Binding(get: { asset.favorite == true }, set: { value in updateAsset(asset.id) { $0.favorite = value } }))
+                TextField(localization.text("library.folder"), text: Binding(get: { asset.folder ?? "" }, set: { value in updateAsset(asset.id) { $0.folder = value } }))
+                TextField(localization.text("library.tags"), text: Binding(get: { (asset.tags ?? []).joined(separator: ", ") }, set: { value in updateAsset(asset.id) { $0.tags = value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty } } }))
+                if asset.kind == "image" {
+                    Button(ocrRunningID == asset.id ? localization.text("library.ocrRunning") : localization.text("library.ocrLocal")) { recognizeTextLocally(asset) }.disabled(ocrRunningID == asset.id)
+                    if let text = asset.ocrText, !text.isEmpty { Text(text).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading) }
+                }
             }.padding()
+            }
             .navigationTitle(localization.text("studio.library"))
             .toolbar { ToolbarItem(placement: .topBarLeading) { Button { selectedAsset = nil } label: { Image(systemName: "chevron.left") } } }
             .onDisappear { assetPlayer?.pause(); assetPlayer = nil }
+        }
+    }
+
+    private func saveTrimmedVideo(_ output: URL, source: MobileMediaAsset) {
+        do {
+            let relative = "generated-media/trim-\(UUID().uuidString).mp4"
+            try local.write(relativePath: relative, data: Data(contentsOf: output))
+            let trimmed = MobileMediaAsset(id: UUID().uuidString, path: relative, kind: "video", prompt: "Trimmed from \(source.prompt)", createdAt: Date())
+            if let index = projects.firstIndex(where: { $0.assets.contains(where: { $0.id == source.id }) }) {
+                projects[index].assets.insert(trimmed, at: 0)
+                projects[index].updatedAt = Date()
+                persist()
+            }
+            selectedAsset = trimmed
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    private func updateAsset(_ id: String, change: (inout MobileMediaAsset) -> Void) {
+        guard let projectIndex = projects.firstIndex(where: { $0.assets.contains(where: { $0.id == id }) }),
+              let assetIndex = projects[projectIndex].assets.firstIndex(where: { $0.id == id }) else { return }
+        change(&projects[projectIndex].assets[assetIndex])
+        projects[projectIndex].updatedAt = Date()
+        if selectedAsset?.id == id { selectedAsset = projects[projectIndex].assets[assetIndex] }
+        persist()
+    }
+
+    private func toggleLibrarySelection(_ asset: MobileMediaAsset) {
+        if !selectedLibraryIDs.insert(asset.id).inserted { selectedLibraryIDs.remove(asset.id) }
+    }
+
+    private func recognizeTextLocally(_ asset: MobileMediaAsset) {
+        let url = local.root.appendingPathComponent(asset.path)
+        ocrRunningID = asset.id
+        Task {
+            do {
+                let text = try await Task.detached(priority: .utility) { () throws -> String in
+                    let request = VNRecognizeTextRequest()
+                    request.recognitionLevel = .accurate
+                    request.usesLanguageCorrection = true
+                    try VNImageRequestHandler(url: url, options: [:]).perform([request])
+                    return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
+                }.value
+                updateAsset(asset.id) { $0.ocrText = text }
+            } catch { errorMessage = error.localizedDescription }
+            ocrRunningID = nil
         }
     }
 
@@ -833,33 +1195,26 @@ struct MobileMediaStudioView: View {
     }
 
     private func createTemplate(_ template: MobileMediaTemplate) {
-        guard let preset = MobileMediaPreset.all.first(where: { $0.id == template.presetID }) else { return }
-        let title = localization.text(template.titleKey)
-        let sampleTitle = localization.text("studio.sample.title")
-        let sampleDetail = localization.text("studio.sample.detail")
-        func shape(_ name: String, _ x: Double, _ y: Double, _ width: Double, _ height: Double, _ color: String, _ form: String = "rectangle", _ radius: Double? = nil) -> MobileMediaLayer {
-            MobileMediaLayer(id: UUID().uuidString, kind: "shape", name: name, x: x, y: y, width: width, height: height, text: "", colorHex: color, fontSize: 48, shape: form, cornerRadius: radius)
-        }
-        func text(_ name: String, _ x: Double, _ y: Double, _ width: Double, _ height: Double, _ value: String, _ size: Double, _ color: String, _ alignment: String = "center", _ weight: String = "medium") -> MobileMediaLayer {
-            MobileMediaLayer(id: UUID().uuidString, kind: "text", name: name, x: x, y: y, width: width, height: height, text: value, colorHex: color, fontSize: size, alignment: alignment, fontWeight: weight)
-        }
-        let layers: [MobileMediaLayer]
-        switch template.id {
-        case "announcement":
-            layers = [shape("Band", 0, 760, 1080, 320, "#FCA311"), text("Title", 80, 250, 920, 260, sampleTitle, 110, "#FFFFFF", "leading", "bold"), text("Detail", 80, 830, 920, 160, sampleDetail, 48, "#14213D", "leading", "medium")]
-        case "story":
-            layers = [shape("Circle", 190, 420, 700, 700, "#E63946", "ellipse"), text("Title", 240, 640, 600, 260, sampleTitle, 96, "#FFFFFF", "center", "bold"), text("Detail", 140, 1300, 800, 200, sampleDetail, 54, "#1D3557", "center", "medium")]
-        case "thumbnail":
-            layers = [shape("Panel", 60, 60, 560, 600, "#5BC0BE", "rectangle", 36), text("Title", 680, 190, 540, 240, sampleTitle, 92, "#FFFFFF", "leading", "bold"), text("Detail", 680, 450, 540, 120, sampleDetail, 40, "#C9D6DF", "leading", "regular")]
-        case "mobile":
-            layers = [shape("Hero", 24, 80, 342, 300, "#4F46E5", "rectangle", 28), text("Title", 24, 420, 342, 90, sampleTitle, 34, "#0F172A", "leading", "bold"), text("Detail", 24, 520, 342, 60, sampleDetail, 16, "#64748B", "leading", "regular"), shape("Button", 24, 720, 342, 56, "#0F172A", "rectangle", 16), text("Label", 24, 734, 342, 28, localization.text("studio.sample.text"), 17, "#FFFFFF", "center", "semibold")]
-        case "slide":
-            layers = [shape("Rule", 140, 470, 220, 12, "#2A9D8F"), text("Title", 140, 240, 1500, 200, sampleTitle, 130, "#264653", "leading", "bold"), text("Detail", 140, 530, 1300, 200, sampleDetail, 56, "#52616B", "leading", "regular")]
-        default:
-            layers = [shape("Mark", 156, 80, 200, 200, "#3D5A80", "rectangle", 48), shape("Dot", 226, 150, 60, 60, "#EE6C4D", "ellipse"), text("Name", 56, 320, 400, 90, localization.text("studio.sample.brand"), 64, "#293241", "center", "bold")]
-        }
-        let project = MobileMediaProject(id: UUID().uuidString, name: title, preset: preset.id, width: preset.width, height: preset.height, assets: [], updatedAt: Date(), layers: layers, backgroundHex: template.background)
-        projects.insert(project, at: 0); selectedProjectID = project.id; selectedType = .image; tab = "projects"; persist()
+        let title = template.title(localization)
+        guard let canvas = template.cloudCanvas else { return }
+            let layers = canvas.layers.map { layer in
+                MobileMediaLayer(
+                    id: UUID().uuidString, kind: layer.kind, name: layer.name,
+                    x: layer.x, y: layer.y, width: layer.width, height: layer.height,
+                    text: layer.text, colorHex: layer.colorHex, assetPath: layer.assetName,
+                    fontSize: layer.fontSize, shape: layer.shape, cornerRadius: layer.cornerRadius,
+                    alignment: layer.alignment, fontWeight: layer.fontWeight,
+                    cropX: layer.cropX, cropY: layer.cropY, cropWidth: layer.cropWidth,
+                    cropHeight: layer.cropHeight, strokeWidth: layer.strokeWidth,
+                    points: layer.points, arrow: layer.arrow, opacity: layer.opacity
+                )
+            }
+            let project = MobileMediaProject(
+                id: UUID().uuidString, name: title, preset: template.presetID,
+                width: Int(canvas.width), height: Int(canvas.height), assets: [], updatedAt: Date(),
+                layers: layers, backgroundHex: canvas.backgroundHex
+            )
+            projects.insert(project, at: 0); selectedProjectID = project.id; selectedType = .image; tab = "projects"; persist()
     }
 
     private func createSong() {
@@ -927,6 +1282,118 @@ struct MobileMediaStudioView: View {
             }
             prompt = ""; persist()
         } catch { errorMessage = error.localizedDescription }
+    }
+}
+
+private struct MobileVideoTrimPanel: View {
+    let url: URL
+    let player: AVPlayer
+    let trimTitle: String
+    let cancelTitle: String
+    let doneTitle: String
+    let alertTitle: String
+    let unavailableMessage: String
+    let failedMessage: String
+    let onExport: (URL) -> Void
+    @State private var duration = 0.0
+    @State private var playhead = 0.0
+    @State private var inPoint = 0.0
+    @State private var outPoint = 0.0
+    @State private var exporting = false
+    @State private var progress: Float = 0
+    @State private var session: AVAssetExportSession?
+    @State private var error: String?
+    private let frameStep = 1.0 / 30.0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VideoPlayer(player: player).frame(minHeight: 260)
+            if duration > 0 {
+                HStack {
+                    Button { seek(max(0, playhead - frameStep)) } label: { Image(systemName: "backward.frame") }
+                    Slider(value: $playhead, in: 0...duration).onChange(of: playhead) { _, value in seek(value) }
+                    Button { seek(min(duration, playhead + frameStep)) } label: { Image(systemName: "forward.frame") }
+                }
+                Text("\(time(inPoint)) — \(time(outPoint)) / \(time(duration))").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                HStack { Text("In").font(.caption); Slider(value: $inPoint, in: 0...max(0.001, outPoint - frameStep)).onChange(of: inPoint) { _, value in if value >= outPoint { outPoint = min(duration, value + frameStep) } } }
+                HStack { Text("Out").font(.caption); Slider(value: $outPoint, in: min(duration, inPoint + frameStep)...max(duration, inPoint + frameStep)).onChange(of: outPoint) { _, value in if value <= inPoint { inPoint = max(0, value - frameStep) } } }
+                if exporting {
+                    ProgressView(value: Double(progress))
+                    Button(cancelTitle, role: .cancel) { session?.cancelExport() }
+                } else {
+                    Button(trimTitle) { exportTrim() }.buttonStyle(.borderedProminent).disabled(outPoint - inPoint < frameStep)
+                }
+            } else { ProgressView() }
+        }
+        .task(id: url) {
+            let asset = AVURLAsset(url: url)
+            if let loaded = try? await asset.load(.duration) {
+                let seconds = CMTimeGetSeconds(loaded)
+                if seconds.isFinite && seconds > 0 { duration = seconds; outPoint = seconds }
+            }
+        }
+        .alert(alertTitle, isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(doneTitle, role: .cancel) { error = nil }
+        } message: { Text(error ?? "") }
+    }
+
+    private func seek(_ seconds: Double) {
+        playhead = seconds
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 60), toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func time(_ seconds: Double) -> String {
+        let frames = Int((seconds * 30).rounded())
+        return String(format: "%02d:%02d:%02d", frames / 1800, (frames / 30) % 60, frames % 30)
+    }
+
+    private func exportTrim() {
+        let asset = AVURLAsset(url: url)
+        guard outPoint > inPoint, let exporter = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality) else { error = unavailableMessage; return }
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("herness-mobile-trim-\(UUID().uuidString).mp4")
+        exporter.outputURL = output
+        exporter.outputFileType = .mp4
+        exporter.shouldOptimizeForNetworkUse = true
+        exporter.timeRange = CMTimeRange(start: CMTime(seconds: inPoint, preferredTimescale: 600), duration: CMTime(seconds: outPoint - inPoint, preferredTimescale: 600))
+        session = exporter
+        exporting = true
+        Task { @MainActor in
+            let watcher = Task { @MainActor in
+                while exporter.status == .waiting || exporter.status == .exporting {
+                    progress = exporter.progress
+                    try? await Task.sleep(for: .milliseconds(120))
+                }
+            }
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in exporter.exportAsynchronously { continuation.resume() } }
+            watcher.cancel()
+            exporting = false
+            guard exporter.status == .completed else { error = exporter.error?.localizedDescription ?? failedMessage; try? FileManager.default.removeItem(at: output); return }
+            onExport(output)
+            try? FileManager.default.removeItem(at: output)
+        }
+    }
+}
+
+private struct MobileMediaPath: Shape {
+    let points: [Double]
+    let arrow: Bool
+
+    func path(in rect: CGRect) -> Path {
+        guard points.count >= 4 else { return Path() }
+        let positions = stride(from: 0, to: points.count - 1, by: 2).map { CGPoint(x: CGFloat(points[$0]) * rect.width, y: CGFloat(points[$0 + 1]) * rect.height) }
+        guard let first = positions.first else { return Path() }
+        var path = Path()
+        path.move(to: first)
+        positions.dropFirst().forEach { path.addLine(to: $0) }
+        if arrow, let tip = positions.last, let previous = positions.dropLast().last {
+            let angle = atan2(tip.y - previous.y, tip.x - previous.x)
+            let head: CGFloat = 18
+            for side: CGFloat in [-1, 1] {
+                path.move(to: tip)
+                path.addLine(to: CGPoint(x: tip.x - cos(angle + side * 0.55) * head, y: tip.y - sin(angle + side * 0.55) * head))
+            }
+        }
+        return path
     }
 }
 
@@ -2310,6 +2777,40 @@ final class MobileNotificationInbox: ObservableObject {
     private func persist() {
         guard let data = try? JSONEncoder().encode(items) else { return }
         defaults.set(data, forKey: Self.storageKey)
+    }
+}
+
+final class MobileAttentionNotificationService: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    static let shared = MobileAttentionNotificationService()
+    private let center = UNUserNotificationCenter.current()
+
+    private override init() {
+        super.init()
+        center.delegate = self
+    }
+
+    func show(title: String, subtitle: String, detail: String, identifier: String) {
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
+            guard granted, let self else { return }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.subtitle = subtitle
+            content.body = detail
+            content.sound = .default
+            self.center.add(UNNotificationRequest(
+                identifier: "attention-\(identifier)",
+                content: content,
+                trigger: nil
+            ))
+        }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
     }
 }
 

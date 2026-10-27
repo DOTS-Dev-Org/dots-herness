@@ -235,7 +235,7 @@ struct MediaLayerContent: View {
     private func picture(_ image: NSImage?, placeholder: String) -> some View {
         let shape = RoundedRectangle(cornerRadius: layer.cornerRadius, style: .continuous)
         if let image {
-            Image(nsImage: image)
+            Image(nsImage: cropped(image) ?? image)
                 .resizable()
                 .scaledToFill()
                 .frame(width: layer.width, height: layer.height)
@@ -249,6 +249,20 @@ struct MediaLayerContent: View {
                         .shadow(color: .black.opacity(0.25), radius: 2)
                 }
         }
+    }
+
+    /// Crop the displayed source pixels while keeping the original asset untouched.
+    private func cropped(_ image: NSImage) -> NSImage? {
+        guard layer.cropX != nil || layer.cropY != nil || layer.cropWidth != nil || layer.cropHeight != nil,
+              let source = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        let x = min(max(layer.cropX ?? 0, 0), 0.999)
+        let y = min(max(layer.cropY ?? 0, 0), 0.999)
+        let width = min(max(layer.cropWidth ?? 1, 0.001), 1 - x)
+        let height = min(max(layer.cropHeight ?? 1, 0.001), 1 - y)
+        let rect = CGRect(x: x * Double(source.width), y: y * Double(source.height),
+                          width: width * Double(source.width), height: height * Double(source.height)).integral
+        guard let cropped = source.cropping(to: rect) else { return nil }
+        return NSImage(cgImage: cropped, size: NSSize(width: cropped.width, height: cropped.height))
     }
 
     private var weight: Font.Weight {

@@ -101,6 +101,10 @@ extension WorkspaceMemory {
         SecretRedaction.sanitize(text, limit: limit)
     }
 
+    func sanitizeSentence(_ text: String, limit: Int) -> String {
+        SecretRedaction.sanitizeSentence(text, limit: limit)
+    }
+
     func writeJSON(_ object: [String: Any], to url: URL) throws {
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -161,6 +165,28 @@ enum SecretRedaction {
         var result = text.replacingMatches(of: whitespace, with: " ")
         for pattern in secrets { result = result.replacingMatches(of: pattern, with: "[redacted]") }
         return String(result.trimmingCharacters(in: .whitespacesAndNewlines).prefix(limit))
+    }
+
+    /// `sanitize` for a fact a model reads back: past the limit it ends at the last sentence
+    /// that fits, or failing that at a word with "…", never in the middle of a word.
+    static func sanitizeSentence(_ text: String, limit: Int) -> String {
+        clipped(sanitize(text, limit: .max), limit: limit)
+    }
+
+    static func clipped(_ text: String, limit: Int) -> String {
+        guard text.count > limit else { return text }
+        let head = text.prefix(limit)
+        // A sentence ends at punctuation followed by a space, so "File.swift" is not one.
+        var cut: String.Index?
+        var index = head.startIndex
+        while index < head.endIndex {
+            let next = text.index(after: index)
+            if ".!?;".contains(text[index]), next == text.endIndex || text[next] == " " { cut = next }
+            index = next
+        }
+        if let cut, head.distance(from: head.startIndex, to: cut) >= limit / 2 { return String(head[..<cut]) }
+        guard let space = head.lastIndex(of: " ") else { return String(head) }
+        return String(head[..<space]).trimmingCharacters(in: CharacterSet(charactersIn: ",;:— ")) + "…"
     }
 }
 

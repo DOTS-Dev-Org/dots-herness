@@ -53,6 +53,11 @@ public struct MediaLayer: Identifiable, Codable, Sendable, Equatable {
     public var arc: Double
     /// A note pinned to the canvas: shown while editing, left out of previews and exports. Its words are in `text`.
     public var comment: Bool
+    /// Normalized source-image crop. Nil values keep older projects uncropped.
+    public var cropX: Double?
+    public var cropY: Double?
+    public var cropWidth: Double?
+    public var cropHeight: Double?
 
     public init(
         id: String = UUID().uuidString,
@@ -84,7 +89,11 @@ public struct MediaLayer: Identifiable, Codable, Sendable, Equatable {
         points: [Double] = [],
         arrow: Bool = false,
         arc: Double = 0,
-        comment: Bool = false
+        comment: Bool = false,
+        cropX: Double? = nil,
+        cropY: Double? = nil,
+        cropWidth: Double? = nil,
+        cropHeight: Double? = nil
     ) {
         self.id = id
         self.name = name
@@ -116,6 +125,10 @@ public struct MediaLayer: Identifiable, Codable, Sendable, Equatable {
         self.arrow = arrow
         self.arc = arc
         self.comment = comment
+        self.cropX = cropX
+        self.cropY = cropY
+        self.cropWidth = cropWidth
+        self.cropHeight = cropHeight
     }
 
     /// Fields added after the first release are optional on disk, so older projects still open.
@@ -151,6 +164,10 @@ public struct MediaLayer: Identifiable, Codable, Sendable, Equatable {
         arrow = try c.decodeIfPresent(Bool.self, forKey: .arrow) ?? false
         arc = try c.decodeIfPresent(Double.self, forKey: .arc) ?? 0
         comment = try c.decodeIfPresent(Bool.self, forKey: .comment) ?? false
+        cropX = try c.decodeIfPresent(Double.self, forKey: .cropX)
+        cropY = try c.decodeIfPresent(Double.self, forKey: .cropY)
+        cropWidth = try c.decodeIfPresent(Double.self, forKey: .cropWidth)
+        cropHeight = try c.decodeIfPresent(Double.self, forKey: .cropHeight)
     }
 }
 
@@ -275,7 +292,7 @@ public struct MediaFrameGroup: Identifiable, Sendable {
     ]
 }
 
-/// A ready-made canvas. Built from text and shapes only, so it needs no bundled assets.
+/// A ready-made canvas decoded from the remotely maintained media template catalog.
 public struct MediaTemplate: Identifiable, Sendable {
     public enum Category: String, CaseIterable, Sendable {
         case social, uiux, presentation, other
@@ -284,8 +301,16 @@ public struct MediaTemplate: Identifiable, Sendable {
 
     public var id: String
     public var category: Category = .social
-    public var title: String { AppCopy.text("studio.template.\(id)") }
+    public var displayTitle: String?
+    public var title: String { displayTitle ?? AppCopy.text("studio.template.\(id)") }
     let build: @Sendable () -> MediaCanvas
+
+    public init(id: String, category: Category = .social, displayTitle: String? = nil, build: @escaping @Sendable () -> MediaCanvas) {
+        self.id = id
+        self.category = category
+        self.displayTitle = displayTitle
+        self.build = build
+    }
 
     public func canvas() -> MediaCanvas {
         var canvas = build()
@@ -299,64 +324,7 @@ public struct MediaTemplate: Identifiable, Sendable {
         return canvas
     }
 
-    public static let all: [MediaTemplate] = [
-        MediaTemplate(id: "announcement") {
-            MediaCanvas(name: "", width: 1080, height: 1080, backgroundHex: "#14213D", layers: [
-                MediaLayer(name: "Band", kind: .shape, x: 0, y: 760, width: 1080, height: 320, colorHex: "#FCA311"),
-                MediaLayer(name: "Title", kind: .text, x: 80, y: 250, width: 920, height: 260,
-                           text: AppCopy.text("studio.sample.title"), fontSize: 110, alignment: .leading, colorHex: "#FFFFFF"),
-                MediaLayer(name: "Detail", kind: .text, x: 80, y: 830, width: 920, height: 160,
-                           text: AppCopy.text("studio.sample.detail"), fontSize: 48, fontWeight: .medium, alignment: .leading, colorHex: "#14213D"),
-            ])
-        },
-        MediaTemplate(id: "story") {
-            MediaCanvas(name: "", width: 1080, height: 1920, backgroundHex: "#F1FAEE", layers: [
-                MediaLayer(name: "Circle", kind: .shape, x: 190, y: 420, width: 700, height: 700, colorHex: "#E63946", shape: .ellipse),
-                MediaLayer(name: "Title", kind: .text, x: 240, y: 640, width: 600, height: 260,
-                           text: AppCopy.text("studio.sample.title"), fontSize: 96, colorHex: "#FFFFFF"),
-                MediaLayer(name: "Detail", kind: .text, x: 140, y: 1300, width: 800, height: 200,
-                           text: AppCopy.text("studio.sample.detail"), fontSize: 54, fontWeight: .medium, colorHex: "#1D3557"),
-            ])
-        },
-        MediaTemplate(id: "thumbnail") {
-            MediaCanvas(name: "", width: 1280, height: 720, backgroundHex: "#0B132B", layers: [
-                MediaLayer(name: "Panel", kind: .shape, x: 60, y: 60, width: 560, height: 600, colorHex: "#5BC0BE", cornerRadius: 36),
-                MediaLayer(name: "Title", kind: .text, x: 680, y: 190, width: 540, height: 240,
-                           text: AppCopy.text("studio.sample.title"), fontSize: 92, alignment: .leading, colorHex: "#FFFFFF"),
-                MediaLayer(name: "Detail", kind: .text, x: 680, y: 450, width: 540, height: 120,
-                           text: AppCopy.text("studio.sample.detail"), fontSize: 40, fontWeight: .regular, alignment: .leading, colorHex: "#C9D6DF"),
-            ])
-        },
-        MediaTemplate(id: "mobile", category: .uiux) {
-            MediaCanvas(name: "", width: 390, height: 844, backgroundHex: "#F8FAFC", layers: [
-                MediaLayer(name: "Hero", kind: .shape, x: 24, y: 80, width: 342, height: 300, colorHex: "#4F46E5", cornerRadius: 28),
-                MediaLayer(name: "Title", kind: .text, x: 24, y: 420, width: 342, height: 90,
-                           text: AppCopy.text("studio.sample.title"), fontSize: 34, alignment: .leading, colorHex: "#0F172A"),
-                MediaLayer(name: "Detail", kind: .text, x: 24, y: 520, width: 342, height: 60,
-                           text: AppCopy.text("studio.sample.detail"), fontSize: 16, fontWeight: .regular, alignment: .leading, colorHex: "#64748B"),
-                MediaLayer(name: "Button", kind: .shape, x: 24, y: 720, width: 342, height: 56, colorHex: "#0F172A", cornerRadius: 16),
-                MediaLayer(name: "Label", kind: .text, x: 24, y: 734, width: 342, height: 28,
-                           text: AppCopy.text("studio.sample.text"), fontSize: 17, colorHex: "#FFFFFF"),
-            ])
-        },
-        MediaTemplate(id: "slide", category: .presentation) {
-            MediaCanvas(name: "", width: 1920, height: 1080, backgroundHex: "#FAFAFA", layers: [
-                MediaLayer(name: "Rule", kind: .shape, x: 140, y: 470, width: 220, height: 12, colorHex: "#2A9D8F"),
-                MediaLayer(name: "Title", kind: .text, x: 140, y: 240, width: 1500, height: 200,
-                           text: AppCopy.text("studio.sample.title"), fontSize: 130, alignment: .leading, colorHex: "#264653"),
-                MediaLayer(name: "Detail", kind: .text, x: 140, y: 530, width: 1300, height: 200,
-                           text: AppCopy.text("studio.sample.detail"), fontSize: 56, fontWeight: .regular, alignment: .leading, colorHex: "#52616B"),
-            ])
-        },
-        MediaTemplate(id: "logo", category: .other) {
-            MediaCanvas(name: "", width: 512, height: 512, backgroundHex: "#FFFFFF", layers: [
-                MediaLayer(name: "Mark", kind: .shape, x: 156, y: 80, width: 200, height: 200, colorHex: "#3D5A80", cornerRadius: 48),
-                MediaLayer(name: "Dot", kind: .shape, x: 226, y: 150, width: 60, height: 60, colorHex: "#EE6C4D", shape: .ellipse),
-                MediaLayer(name: "Name", kind: .text, x: 56, y: 320, width: 400, height: 90,
-                           text: AppCopy.text("studio.sample.brand"), fontSize: 64, colorHex: "#293241"),
-            ])
-        },
-    ]
+    public static let all: [MediaTemplate] = []
 }
 
 /// Where the studio's generated images, videos and music come from.

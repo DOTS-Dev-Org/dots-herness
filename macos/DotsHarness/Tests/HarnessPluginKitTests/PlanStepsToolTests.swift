@@ -13,5 +13,8 @@ final class PlanStepsToolTests: XCTestCase {
             .init(title: "Test", status: "pending"),
         ])
         XCTAssertEqual(PlanStepsTool.currentSteps(in: [plan, ChatMessage(kind: .user, text: "next")]), [])
+        XCTAssertTrue(PlanStepsTool.unfinishedReminder(in: [plan])?.contains("- Fix bug\n- Test") == true)
+        let finished = ChatMessage(kind: .tool, text: "✓ update_plan", rawToolOutput: PlanStepsTool.execute(AgentToolCall(id: "2", name: PlanStepsTool.name, arguments: #"{"steps":[{"title":"Read code","status":"done"}]}"#)))
+        XCTAssertNil(PlanStepsTool.unfinishedReminder(in: [finished]))
     }
 }

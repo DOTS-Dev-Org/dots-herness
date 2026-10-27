@@ -24,6 +24,17 @@ private struct MemoryTransferBundle: Codable {
 
 extension WorkspaceMemory {
     private static var maxTransferFacts: Int { 60 }
+    /// A decision carries its reason, which is what lets a later task tell whether it still
+    /// applies; other facts are one sentence.
+    static let decisionLimit = 360
+
+    static func factLimit(kind: String, key: String) -> Int {
+        switch kind {
+        case "project": return ProjectKnowledge.limit(forKey: key)
+        case "decision": return decisionLimit
+        default: return 240
+        }
+    }
 
     public func exportMemory(_ scope: MemoryTransferScope) throws -> Data {
         let bundle: MemoryTransferBundle
@@ -92,7 +103,7 @@ extension WorkspaceMemory {
         for event in state["acceptedDecisions"] as? [[String: Any]] ?? [] {
             let payload = event["payload"] as? [String: Any] ?? [:]
             guard let eventID = event["eventId"] as? String else { continue }
-            let summary = sanitize(payload["summary"] as? String ?? payload["value"] as? String ?? "Accepted project decision", limit: 240)
+            let summary = sanitize(payload["summary"] as? String ?? payload["value"] as? String ?? "Accepted project decision", limit: .max)
             appendDecision(key: eventID, summary: summary, to: &facts)
         }
         if let directory = memoryDirectory?.appendingPathComponent("decisions", isDirectory: true),
@@ -112,12 +123,42 @@ extension WorkspaceMemory {
                 appendDecision(key: key, summary: summary, to: &facts)
             }
         }
-        return Array(facts.suffix(Self.maxTransferFacts))
+        return Array(Self.tidied(facts).suffix(Self.maxTransferFacts))
+    }
+
+    /// Facts as a prompt should read them. Older builds cut every fact at its limit in the
+    /// middle of a word: such a text ends at its last whole sentence instead. A decision
+    /// stated twice in other words is kept once, in its fuller wording. The file itself is
+    /// rewritten tidy the next time a fact is recorded.
+    static func tidied(_ facts: [MemoryTransferFact]) -> [MemoryTransferFact] {
+        var kept: [MemoryTransferFact] = []
+        for var fact in facts {
+            let limit = factLimit(kind: fact.kind, key: fact.key)
+            // Older builds cut every decision at 240 characters.
+            if fact.text.count >= limit || fact.kind == "decision" && fact.text.count == 240, let last = fact.text.last, !".!?)…".contains(last) {
+                fact.text = SecretRedaction.clipped(fact.text, limit: fact.text.count - 1)
+            }
+            guard fact.kind == "decision",
+                  let twin = kept.firstIndex(where: { $0.kind == "decision" && sameDecision($0.text, fact.text) }) else {
+                kept.append(fact)
+                continue
+            }
+            if FeedbackStore.tokens(fact.text).count > FeedbackStore.tokens(kept[twin].text).count { kept[twin] = fact }
+        }
+        return kept
+    }
+
+    /// Two decisions sharing most of their words say the same thing.
+    /// ponytail: word overlap, not meaning; a reworded twin with few shared words stays.
+    static func sameDecision(_ left: String, _ right: String) -> Bool {
+        let a = FeedbackStore.tokens(left), b = FeedbackStore.tokens(right)
+        guard min(a.count, b.count) >= 5 else { return FeedbackStore.folded(left) == FeedbackStore.folded(right) }
+        return Double(a.intersection(b).count) / Double(a.union(b).count) >= 0.7
     }
 
     private func appendDecision(key: String, summary: String, to facts: inout [MemoryTransferFact]) {
         let key = sanitize(key, limit: 60)
-        let text = sanitize(summary, limit: 240)
+        let text = sanitizeSentence(summary, limit: Self.decisionLimit)
         guard !key.isEmpty, !text.isEmpty,
               !facts.contains(where: { $0.kind == "decision" && ($0.key == key || $0.text == text) }) else { return }
         facts.append(MemoryTransferFact(kind: "decision", key: key, text: text))
@@ -142,8 +183,8 @@ extension WorkspaceMemory {
                 ? fact.kind == "project" || fact.kind == "decision"
                 : fact.kind == "preference"
             let key = sanitize(fact.key, limit: 60)
-            let limit = fact.kind == "project" ? ProjectKnowledge.limit(forKey: key) : 240
-            let text = sanitize(fact.text, limit: limit)
+            let limit = Self.factLimit(kind: fact.kind, key: key)
+            let text = sanitizeSentence(fact.text, limit: limit)
             let entry = RememberTool.Entry(kind: fact.kind, key: key, text: text)
             guard allowed, !key.isEmpty, !text.isEmpty, !RememberTool.looksLikeSecret(entry) else {
                 throw WorkspaceMemoryError.invalidTransfer
@@ -156,7 +197,8 @@ extension WorkspaceMemory {
         guard let url = projectMemoryFactsURL else { throw WorkspaceMemoryError.noWorkspace }
         var facts = projectMemoryFacts()
         for item in incoming {
-            facts.removeAll { $0.kind == item.kind && $0.key == item.key }
+            // A decision restated in other words replaces the old wording.
+            facts.removeAll { $0.kind == item.kind && ($0.key == item.key || item.kind == "decision" && Self.sameDecision($0.text, item.text)) }
             facts.append(item)
         }
         if facts.count > Self.maxTransferFacts {
@@ -166,7 +208,7 @@ extension WorkspaceMemory {
     }
 
     func setProjectMemoryFact(kind: String, key: String, text: String) throws {
-        let normalized = MemoryTransferFact(kind: kind, key: sanitize(key, limit: 60), text: sanitize(text, limit: kind == "project" ? ProjectKnowledge.limit(forKey: key) : 240))
+        let normalized = MemoryTransferFact(kind: kind, key: sanitize(key, limit: 60), text: sanitizeSentence(text, limit: Self.factLimit(kind: kind, key: key)))
         let facts = try validated([normalized], scope: .project)
         // The first fact HerNess writes starts this checkout's memory: it is ours.
         let startsMemory = projectMemoryTrust == nil && projectMemoryFacts().isEmpty

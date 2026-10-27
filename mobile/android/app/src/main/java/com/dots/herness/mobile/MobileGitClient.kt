@@ -9,6 +9,22 @@ data class MobileGitResult(val code: Int, val output: String) {
     val unavailable get() = code == 2
 }
 
+data class MobileGitBranchSnapshot(val currentBranch: String?, val branches: List<String>) {
+    companion object {
+        fun parse(output: String): MobileGitBranchSnapshot {
+            var current: String? = null
+            val branches = mutableListOf<String>()
+            output.lineSequence().forEach { line ->
+                when {
+                    line.startsWith("current\t") -> current = line.substringAfter('\t').ifBlank { null }
+                    line.startsWith("branch\t") -> line.substringAfter('\t').takeIf(String::isNotBlank)?.let(branches::add)
+                }
+            }
+            return MobileGitBranchSnapshot(current, branches)
+        }
+    }
+}
+
 private object NativeGit {
     private val loaded = runCatching { System.loadLibrary("herness_git") }.isSuccess
 
@@ -28,6 +44,20 @@ private object NativeGit {
 /// for each operation and are never written to the repository configuration.
 class MobileGitClient(private val root: () -> File, private val token: () -> String) {
     val available get() = NativeGit.available()
+
+    suspend fun branchSnapshot(): MobileGitBranchSnapshot? {
+        val result = execute("branches")
+        return if (result.succeeded) MobileGitBranchSnapshot.parse(result.output) else null
+    }
+
+    suspend fun checkoutBranch(branch: String) {
+        requireSuccess(execute("checkout", mapOf("argument" to branch)))
+    }
+
+    suspend fun createBranch(branch: String) {
+        requireSuccess(execute("create_branch", mapOf("argument" to branch)))
+        checkoutBranch(branch)
+    }
 
     suspend fun execute(operation: String, arguments: Map<String, String> = emptyMap()): MobileGitResult = withContext(Dispatchers.IO) {
         val workspace = root().canonicalFile
@@ -60,6 +90,10 @@ class MobileGitClient(private val root: () -> File, private val token: () -> Str
 
     suspend fun clone(repositoryUrl: String, destination: File, branch: String) {
         val result = execute("clone", mapOf("repoPath" to destination.path, "argument" to repositoryUrl, "second" to branch))
+        if (!result.succeeded) throw MobileGitException(result)
+    }
+
+    private fun requireSuccess(result: MobileGitResult) {
         if (!result.succeeded) throw MobileGitException(result)
     }
 }

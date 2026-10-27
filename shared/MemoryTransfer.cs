@@ -108,7 +108,7 @@ public static class MemoryTransfer
             var summary = ExtractSummary(body);
             if (summary.Length == 0) summary = front.GetValueOrDefault("title")?.Trim().Trim('"', '\'') ?? "";
             summary = string.Join(' ', summary.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-            if (summary.Length > WorkspaceFacts.MaxTextLength) summary = summary[..WorkspaceFacts.MaxTextLength];
+            summary = WorkspaceFacts.Clip(summary, WorkspaceFacts.MaxDecisionLength);
             if (summary.Length > 0) decisions.Add(new WorkspaceFact("decision", key, summary));
         }
         return decisions;

@@ -579,6 +579,7 @@ public final class NativeAgentHost {
     /// How long the `waitThenAsk` policy waits silently before it asks.
     public internal(set) var conflictWaitSeconds: Int = WorkspaceConflictPolicy.defaultWaitSeconds
     public internal(set) var followUpSuggestion: String?
+    public internal(set) var followUpSuggestions: [String] = []
     public internal(set) var followUpConversationID: String?
     @ObservationIgnored public var onAssistantResponse: ((AssistantResponseEvent) -> Void)?
     @ObservationIgnored var onSelectedConversationChanged: ((String?) -> Void)?
@@ -587,8 +588,6 @@ public final class NativeAgentHost {
     @ObservationIgnored public var onAttentionNeeded: ((RunAttentionEvent) -> Void)?
     /// A plan was approved automatically, so the composer's plan mode should end like a manual approval.
     @ObservationIgnored public var onPlanAutoApproved: (() -> Void)?
-    /// The model switched a turn to plan mode; nil (bots, tests) keeps runs out of plan mode.
-    @ObservationIgnored public var onPlanModeEntered: (() -> Void)?
     @ObservationIgnored public var onRemoteEvent: ((String, [String: String]) -> Void)?
     /// Set by the app: called after `install_plugin` writes a plugin so the host
     /// re-mounts and the new plugin goes live without a restart. Nil in tests.
@@ -1270,6 +1269,7 @@ public final class NativeAgentHost {
         followUpTask = nil
         followUpGenerationID = UUID()
         followUpSuggestion = nil
+        followUpSuggestions = []
         followUpConversationID = nil
     }
 

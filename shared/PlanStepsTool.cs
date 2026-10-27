@@ -90,4 +90,14 @@ public static class PlanStepsTool
         }
         return [];
     }
+
+    /// <summary>Sent once when a turn tries to end while its plan still has open steps; null when none are open.</summary>
+    public static string? UnfinishedReminder(IEnumerable<ChatMessage> messages)
+    {
+        var open = CurrentSteps(messages).Where(step => step.Status != "done").ToList();
+        if (open.Count == 0) return null;
+        return "Your plan still has unfinished steps:\n"
+            + string.Join("\n", open.Select(step => "- " + step.Title))
+            + "\nContinue and complete them now. If a step truly cannot be done here, call update_plan to mark what is done, then say plainly which steps remain and why. Finish with your full answer to the user.";
+    }
 }

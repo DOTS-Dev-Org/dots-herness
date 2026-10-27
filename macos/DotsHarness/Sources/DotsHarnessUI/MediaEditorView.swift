@@ -379,7 +379,7 @@ struct MediaEditorView: View {
                         width: start.width + value.translation.width,
                         height: start.height + value.translation.height
                     )
-                case .pencil:
+                case .pencil, .marker:
                     // Skip points closer than two screen points: enough for a smooth line, far fewer to store.
                     if let last = draftPoints.last, hypot(point.x - last.x, point.y - last.y) * state.zoom < 2 { return }
                     draftPoints.append(point)
@@ -407,8 +407,12 @@ struct MediaEditorView: View {
                     panStart = nil
                 case .scale:
                     endDrag()
-                case .pencil:
-                    state.addPath(draftPoints, name: MediaTool.pencil.title)
+                case .pencil, .marker:
+                    if state.tool == .marker {
+                        state.addPath(draftPoints, name: MediaTool.marker.title, colorHex: "#FFD400", strokeWidth: 24, opacity: 0.42)
+                    } else {
+                        state.addPath(draftPoints, name: MediaTool.pencil.title)
+                    }
                     draftPoints = []
                 case .pen:
                     if let last = draftPoints.last, hypot(point.x - last.x, point.y - last.y) * state.zoom < 6 {
@@ -686,7 +690,7 @@ struct MediaEditorView: View {
         ToolGroup(id: "move", tools: [.move, .hand, .scale]),
         ToolGroup(id: "frame", tools: [.frame, .section, .slice]),
         ToolGroup(id: "shape", tools: [.rectangle, .line, .arrow, .ellipse, .polygon, .star]),
-        ToolGroup(id: "draw", tools: [.pen, .pencil]),
+        ToolGroup(id: "draw", tools: [.pen, .pencil, .marker]),
         ToolGroup(id: "text", tools: [.text, .textPath]),
         ToolGroup(id: "comment", tools: [.comment]),
     ]

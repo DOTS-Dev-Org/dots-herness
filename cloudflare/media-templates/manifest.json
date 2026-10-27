@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "templates": [
+    {
+      "id": "announcement",
+      "category": "social",
+      "presetId": "square",
+      "titles": { "en": "Announcement", "tr": "Duyuru" },
+      "canvas": {
+        "id": "announcement",
+        "name": "Announcement",
+        "x": 0,
+        "y": 0,
+        "width": 1080,
+        "height": 1080,
+        "backgroundHex": "#14213D",
+        "layers": [
+          { "id": "band", "name": "Band", "kind": "shape", "x": 0, "y": 760, "width": 1080, "height": 320, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#FCA311", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "title", "name": "Title", "kind": "text", "x": 80, "y": 250, "width": 920, "height": 260, "opacity": 1, "hidden": false, "text": "Your announcement", "fontSize": 110, "fontWeight": "bold", "alignment": "leading", "colorHex": "#FFFFFF", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "detail", "name": "Detail", "kind": "text", "x": 80, "y": 830, "width": 920, "height": 160, "opacity": 1, "hidden": false, "text": "Add a short supporting message", "fontSize": 48, "fontWeight": "medium", "alignment": "leading", "colorHex": "#14213D", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null }
+        ]
+      }
+    },
+    {
+      "id": "story",
+      "category": "social",
+      "presetId": "story",
+      "titles": { "en": "Story", "tr": "Hikâye" },
+      "canvas": {
+        "id": "story",
+        "name": "Story",
+        "x": 0,
+        "y": 0,
+        "width": 1080,
+        "height": 1920,
+        "backgroundHex": "#F1FAEE",
+        "layers": [
+          { "id": "circle", "name": "Circle", "kind": "shape", "x": 190, "y": 420, "width": 700, "height": 700, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#E63946", "shape": "ellipse", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "title", "name": "Title", "kind": "text", "x": 240, "y": 640, "width": 600, "height": 260, "opacity": 1, "hidden": false, "text": "Your story", "fontSize": 96, "fontWeight": "bold", "alignment": "center", "colorHex": "#FFFFFF", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "detail", "name": "Detail", "kind": "text", "x": 140, "y": 1300, "width": 800, "height": 200, "opacity": 1, "hidden": false, "text": "Add a short message", "fontSize": 54, "fontWeight": "medium", "alignment": "center", "colorHex": "#1D3557", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null }
+        ]
+      }
+    },
+    {
+      "id": "thumbnail",
+      "category": "social",
+      "presetId": "thumbnail",
+      "titles": { "en": "Thumbnail", "tr": "Küçük Resim" },
+      "canvas": {
+        "id": "thumbnail",
+        "name": "Thumbnail",
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720,
+        "backgroundHex": "#0B132B",
+        "layers": [
+          { "id": "panel", "name": "Panel", "kind": "shape", "x": 60, "y": 60, "width": 560, "height": 600, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#5BC0BE", "shape": "rectangle", "cornerRadius": 36, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "title", "name": "Title", "kind": "text", "x": 680, "y": 190, "width": 540, "height": 240, "opacity": 1, "hidden": false, "text": "Your video title", "fontSize": 92, "fontWeight": "bold", "alignment": "leading", "colorHex": "#FFFFFF", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "detail", "name": "Detail", "kind": "text", "x": 680, "y": 450, "width": 540, "height": 120, "opacity": 1, "hidden": false, "text": "Add a short subtitle", "fontSize": 40, "fontWeight": "regular", "alignment": "leading", "colorHex": "#C9D6DF", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null }
+        ]
+      }
+    },
+    {
+      "id": "youtube",
+      "category": "social",
+      "presetId": "thumbnail",
+      "titles": { "en": "YouTube cover", "tr": "YouTube kapağı" },
+      "canvas": {
+        "id": "youtube",
+        "name": "YouTube cover",
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 720,
+        "backgroundHex": "#10131C",
+        "layers": [
+          { "id": "image-area", "name": "Image area", "kind": "shape", "x": 0, "y": 0, "width": 690, "height": 720, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#343A49", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "play", "name": "Play", "kind": "text", "x": 276, "y": 276, "width": 138, "height": 138, "opacity": 1, "hidden": false, "text": "▶", "fontSize": 96, "fontWeight": "bold", "alignment": "center", "colorHex": "#FFFFFF", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "accent", "name": "Accent", "kind": "shape", "x": 730, "y": 116, "width": 14, "height": 488, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#FFCE33", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "eyebrow", "name": "Eyebrow", "kind": "text", "x": 780, "y": 112, "width": 440, "height": 56, "opacity": 1, "hidden": false, "text": "YOUTUBE · NEW VIDEO", "fontSize": 28, "fontWeight": "bold", "alignment": "leading", "colorHex": "#FFCE33", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "title", "name": "Title", "kind": "text", "x": 780, "y": 206, "width": 440, "height": 260, "opacity": 1, "hidden": false, "text": "Your video title", "fontSize": 76, "fontWeight": "bold", "alignment": "leading", "colorHex": "#FFFFFF", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "detail", "name": "Detail", "kind": "text", "x": 780, "y": 500, "width": 440, "height": 92, "opacity": 1, "hidden": false, "text": "Add a short supporting line", "fontSize": 32, "fontWeight": "medium", "alignment": "leading", "colorHex": "#D7DCE7", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null }
+        ]
+      }
+    },
+    {
+      "id": "mobile",
+      "category": "uiux",
+      "presetId": "mobile",
+      "titles": { "en": "Mobile app screen", "tr": "Mobil uygulama ekranı" },
+      "canvas": {
+        "id": "mobile",
+        "name": "Mobile app screen",
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "backgroundHex": "#F8FAFC",
+        "layers": [
+          { "id": "hero", "name": "Hero", "kind": "shape", "x": 24, "y": 80, "width": 342, "height": 300, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#4F46E5", "shape": "rectangle", "cornerRadius": 28, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "title", "name": "Title", "kind": "text", "x": 24, "y": 420, "width": 342, "height": 90, "opacity": 1, "hidden": false, "text": "Your app", "fontSize": 34, "fontWeight": "bold", "alignment": "leading", "colorHex": "#0F172A", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "detail", "name": "Detail", "kind": "text", "x": 24, "y": 520, "width": 342, "height": 60, "opacity": 1, "hidden": false, "text": "Add a short description", "fontSize": 16, "fontWeight": "regular", "alignment": "leading", "colorHex": "#64748B", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "button", "name": "Button", "kind": "shape", "x": 24, "y": 720, "width": 342, "height": 56, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#0F172A", "shape": "rectangle", "cornerRadius": 16, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "label", "name": "Label", "kind": "text", "x": 24, "y": 734, "width": 342, "height": 28, "opacity": 1, "hidden": false, "text": "Continue", "fontSize": 17, "fontWeight": "medium", "alignment": "center", "colorHex": "#FFFFFF", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null }
+        ]
+      }
+    },
+    {
+      "id": "slide",
+      "category": "presentation",
+      "presetId": "landscape",
+      "titles": { "en": "Presentation slide", "tr": "Sunum slaytı" },
+      "canvas": {
+        "id": "slide",
+        "name": "Presentation slide",
+        "x": 0,
+        "y": 0,
+        "width": 1920,
+        "height": 1080,
+        "backgroundHex": "#FAFAFA",
+        "layers": [
+          { "id": "rule", "name": "Rule", "kind": "shape", "x": 140, "y": 470, "width": 220, "height": 12, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#2A9D8F", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "title", "name": "Title", "kind": "text", "x": 140, "y": 240, "width": 1500, "height": 200, "opacity": 1, "hidden": false, "text": "Your presentation title", "fontSize": 130, "fontWeight": "bold", "alignment": "leading", "colorHex": "#264653", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "detail", "name": "Detail", "kind": "text", "x": 140, "y": 530, "width": 1300, "height": 200, "opacity": 1, "hidden": false, "text": "Add a short summary", "fontSize": 56, "fontWeight": "regular", "alignment": "leading", "colorHex": "#52616B", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null }
+        ]
+      }
+    },
+    {
+      "id": "logo",
+      "category": "other",
+      "presetId": "logo",
+      "titles": { "en": "Logo", "tr": "Logo" },
+      "canvas": {
+        "id": "logo",
+        "name": "Logo",
+        "x": 0,
+        "y": 0,
+        "width": 512,
+        "height": 512,
+        "backgroundHex": "#FFFFFF",
+        "layers": [
+          { "id": "mark", "name": "Mark", "kind": "shape", "x": 156, "y": 80, "width": 200, "height": 200, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#3D5A80", "shape": "rectangle", "cornerRadius": 48, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "dot", "name": "Dot", "kind": "shape", "x": 226, "y": 150, "width": 60, "height": 60, "opacity": 1, "hidden": false, "text": "", "fontSize": 48, "fontWeight": "bold", "alignment": "center", "colorHex": "#EE6C4D", "shape": "ellipse", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null },
+          { "id": "name", "name": "Name", "kind": "text", "x": 56, "y": 320, "width": 400, "height": 90, "opacity": 1, "hidden": false, "text": "Brand name", "fontSize": 64, "fontWeight": "bold", "alignment": "center", "colorHex": "#293241", "shape": "rectangle", "cornerRadius": 0, "assetName": null, "locked": false, "rotation": 0, "gradientHex": null, "strokeHex": null, "strokeWidth": 0, "shadow": 0, "symbol": "star.fill", "fontDesign": "default", "prompt": null, "points": [], "arrow": false, "arc": 0, "comment": false, "cropX": null, "cropY": null, "cropWidth": null, "cropHeight": null }
+        ]
+      }
+    }
+  ]
+}

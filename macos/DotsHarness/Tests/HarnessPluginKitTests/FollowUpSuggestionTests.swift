@@ -17,6 +17,22 @@ final class FollowUpSuggestionTests: XCTestCase {
         XCTAssertTrue(normalized?.allSatisfy { $0 == "🙂" || $0 == "é" } == true)
     }
 
+    func testNormalizesUpToTwoReplyChoices() {
+        XCTAssertEqual(
+            normalizeFollowUpSuggestions("1. Evet, ilk öneriyi uygula.\n2) Hayır, şimdilik uygulama."),
+            ["Evet, ilk öneriyi uygula.", "Hayır, şimdilik uygulama."]
+        )
+    }
+
+    func testFallsBackToOneChoiceAndIgnoresDuplicateLines() {
+        XCTAssertEqual(normalizeFollowUpSuggestions("  Push et  "), ["Push et"])
+        XCTAssertEqual(
+            normalizeFollowUpSuggestions("Push et\npush et\nBaşka seçeneği uygula\nÜçüncü seçenek"),
+            ["Push et", "Başka seçeneği uygula"]
+        )
+        XCTAssertEqual(normalizeFollowUpSuggestions("\n  "), [])
+    }
+
     func testKeepsShortSuggestionsUnchanged() {
         let suggestion = "Faz 1 ile devam et"
         XCTAssertEqual(normalizeFollowUpSuggestion(suggestion), suggestion)

@@ -63,6 +63,8 @@ dependencies {
     implementation("androidx.window:window:1.5.1")
     // Navigation drawer icons; text glyphs render differently on every device.
     implementation("androidx.compose.material:material-icons-extended")
+    // On-device text recognition for the Media Library; image files are never uploaded for OCR.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     // Sandboxed JS for `runtime: js` plugins; Rhino runs interpreted, so tool
     // calls stay synchronous instead of bouncing through a WebView callback.
     implementation("org.mozilla:rhino:1.7.15")

@@ -2,6 +2,7 @@
 // Small shared primitives for the native macOS UI.
 
 import AppKit
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 import DotsHarnessCore
@@ -38,50 +39,167 @@ enum ImageFileCache {
         }
         return image
     }
+    nonisolated static func thumbnailData(at url: URL, maxPixelSize: Int = 256) -> Data? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(
+                  source,
+                  0,
+                  [
+                      kCGImageSourceCreateThumbnailFromImageAlways: true,
+                      kCGImageSourceCreateThumbnailWithTransform: true,
+                      kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+                      kCGImageSourceShouldCacheImmediately: true,
+                  ] as CFDictionary
+              ) else { return nil }
+
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            output,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        ) else { return nil }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return output as Data
+    }
+}
+
+enum ImageAttachmentData {
+    static func png(from data: Data) -> Data? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(
+                  source,
+                  0,
+                  [
+                      kCGImageSourceCreateThumbnailFromImageAlways: true,
+                      kCGImageSourceCreateThumbnailWithTransform: true,
+                      kCGImageSourceThumbnailMaxPixelSize: 65_536,
+                      kCGImageSourceShouldCacheImmediately: true,
+                  ] as CFDictionary
+              ) else { return nil }
+
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            output,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        ) else { return nil }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return output as Data
+    }
+}
+
+struct DraftAttachmentThumbnail: View {
+    let url: URL
+    let name: String
+    let icon: String
+
+    @State private var thumbnail: NSImage?
+
+    var body: some View {
+        Group {
+            if let thumbnail {
+                Image(nsImage: thumbnail)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                VStack(spacing: 4) {
+                    Image(systemName: icon)
+                        .font(.title3)
+                    Text(name)
+                        .font(.caption2)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
+                .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 64, height: 64)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .task(id: url) {
+            thumbnail = nil
+            let data = await Task.detached(priority: .utility) {
+                ImageFileCache.thumbnailData(at: url)
+            }.value
+            guard !Task.isCancelled, let data else { return }
+            thumbnail = NSImage(data: data)
+        }
+    }
+}
+
+enum DroppedAttachment: Sendable, Equatable {
+    case file(URL)
+    case image(Data, typeIdentifier: String)
 }
 
 @MainActor
-private final class FileDropBatch {
+private final class AttachmentDropBatch {
     private var remaining: Int
-    private var urls: [URL?]
-    private let onURLs: @MainActor ([URL]) -> Void
+    private var items: [DroppedAttachment?]
+    private var finished: [Bool]
+    private let onItems: @MainActor ([DroppedAttachment]) -> Void
 
-    init(count: Int, onURLs: @escaping @MainActor ([URL]) -> Void) {
+    init(count: Int, onItems: @escaping @MainActor ([DroppedAttachment]) -> Void) {
         remaining = count
-        urls = Array(repeating: nil, count: count)
-        self.onURLs = onURLs
+        items = Array(repeating: nil, count: count)
+        finished = Array(repeating: false, count: count)
+        self.onItems = onItems
     }
 
-    func finish(_ url: URL?, at index: Int) {
-        guard urls.indices.contains(index), urls[index] == nil else { return }
-        urls[index] = url
+    func finish(_ item: DroppedAttachment?, at index: Int) {
+        guard items.indices.contains(index), !finished[index] else { return }
+        finished[index] = true
+        items[index] = item
         remaining -= 1
         guard remaining == 0 else { return }
-
-        let loadedURLs = urls.compactMap { $0 }
-        if !loadedURLs.isEmpty { onURLs(loadedURLs) }
+        let loadedItems = items.compactMap { $0 }
+        if !loadedItems.isEmpty { onItems(loadedItems) }
     }
 }
 
 @MainActor
-func handleFileDrop(_ providers: [NSItemProvider], onURLs: @escaping @MainActor ([URL]) -> Void) -> Bool {
+func handleAttachmentDrop(
+    _ providers: [NSItemProvider],
+    onItems: @escaping @MainActor ([DroppedAttachment]) -> Void
+) -> Bool {
     guard !providers.isEmpty else { return false }
-    let batch = FileDropBatch(count: providers.count, onURLs: onURLs)
+    let batch = AttachmentDropBatch(count: providers.count, onItems: onItems)
 
     for (index, provider) in providers.enumerated() {
         if provider.canLoadObject(ofClass: NSURL.self) {
             _ = provider.loadObject(ofClass: NSURL.self) { item, _ in
                 let url = (item as? NSURL).map { $0 as URL }
-                Task { @MainActor in batch.finish(url, at: index) }
+                Task { @MainActor in batch.finish(url.map(DroppedAttachment.file), at: index) }
+            }
+        } else if let imageType = provider.registeredTypeIdentifiers.first(where: {
+            UTType($0)?.conforms(to: .image) == true
+        }) {
+            _ = provider.loadDataRepresentation(forTypeIdentifier: imageType) { data, _ in
+                let item = data.map { DroppedAttachment.image($0, typeIdentifier: imageType) }
+                Task { @MainActor in batch.finish(item, at: index) }
             }
         } else {
             _ = provider.loadDataRepresentation(for: .fileURL) { data, _ in
                 let url = data.flatMap { URL(dataRepresentation: $0, relativeTo: nil) }
-                Task { @MainActor in batch.finish(url, at: index) }
+                Task { @MainActor in batch.finish(url.map(DroppedAttachment.file), at: index) }
             }
         }
     }
     return true
+}
+
+@MainActor
+func handleFileDrop(_ providers: [NSItemProvider], onURLs: @escaping @MainActor ([URL]) -> Void) -> Bool {
+    handleAttachmentDrop(providers) { items in
+        onURLs(items.compactMap { item in
+            guard case let .file(url) = item else { return nil }
+            return url
+        })
+    }
 }
 
 struct VoiceTranscriptPreview: View {

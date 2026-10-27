@@ -10,6 +10,7 @@ import PluginRuntime
 enum ProjectGroupKind: Equatable {
     case pinned
     case named
+    case folder
     case other
 }
 
@@ -18,6 +19,36 @@ struct ProjectGroup: Identifiable {
     let paths: [String]
     let kind: ProjectGroupKind
     var id: String { "\(title ?? "__other__"):\(paths.first ?? "")" }
+}
+
+enum ProjectSidebarGrouping: String, CaseIterable, Hashable {
+    case sections
+    case folder
+    case none
+}
+
+enum ProjectSidebarSort: String, CaseIterable, Hashable {
+    case defaultOrder
+    case name
+}
+
+enum ProjectFolderGrouping {
+    static func groups(for paths: [String]) -> [ProjectGroup] {
+        let grouped = Dictionary(grouping: paths) { path in
+            URL(fileURLWithPath: path).deletingLastPathComponent().standardizedFileURL.path
+        }
+        let nameCounts = Dictionary(grouping: grouped.keys, by: { URL(fileURLWithPath: $0).lastPathComponent })
+            .mapValues(\.count)
+        return grouped.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }.compactMap { folderPath in
+            guard let projectPaths = grouped[folderPath], !projectPaths.isEmpty else { return nil }
+            let folderURL = URL(fileURLWithPath: folderPath)
+            let name = folderURL.lastPathComponent
+            let title = nameCounts[name, default: 0] > 1
+                ? "\(folderURL.deletingLastPathComponent().lastPathComponent)/\(name)"
+                : name
+            return ProjectGroup(title: title, paths: projectPaths, kind: .folder)
+        }
+    }
 }
 
 /// Presentation rules for unsectioned projects. The sidebar passes the space

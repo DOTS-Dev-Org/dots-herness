@@ -17,6 +17,12 @@ public sealed class MediaLibraryItem
     public string Title { get; set; } = "";
     public string Path { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
+    /// <summary>Library organization metadata; absent in older index files and treated as empty.</summary>
+    public bool Favorite { get; set; }
+    public string Folder { get; set; } = "";
+    public List<string> Tags { get; set; } = [];
+    /// <summary>Text recognized on-device. It is never populated by sending the file to a provider.</summary>
+    public string OcrText { get; set; } = "";
 
     public string DisplayTitle => Title.Length > 0 ? Title : LocalizationService.Current.Get($"library.kind.{Kind}");
 
@@ -97,6 +103,29 @@ public static class MediaLibrary
         }
         return 0;
     });
+
+    public static void Update(string id, string root, Action<MediaLibraryItem> change) => Mutate(root, items =>
+    {
+        if (items.FirstOrDefault(item => item.Id == id) is { } item) change(item);
+        return 0;
+    });
+
+    /// <summary>Copies selected library files to a user-chosen folder, resolving duplicate names safely.</summary>
+    public static int Export(IEnumerable<string> ids, string destination, string root)
+    {
+        var selected = ids.ToHashSet(StringComparer.Ordinal);
+        var items = Items(root).Where(item => selected.Contains(item.Id) && File.Exists(item.Path)).ToList();
+        System.IO.Directory.CreateDirectory(destination);
+        foreach (var item in items)
+        {
+            var baseName = System.IO.Path.GetFileNameWithoutExtension(item.Path);
+            var extension = System.IO.Path.GetExtension(item.Path);
+            var target = System.IO.Path.Combine(destination, baseName + extension);
+            for (var suffix = 2; File.Exists(target); suffix++) target = System.IO.Path.Combine(destination, $"{baseName} ({suffix}){extension}");
+            File.Copy(item.Path, target);
+        }
+        return items.Count;
+    }
 
     // ponytail: one JSON file rewritten per change; move to SQLite when a library reaches tens of thousands of items.
     private static T Mutate<T>(string root, Func<List<MediaLibraryItem>, T> change)

@@ -72,13 +72,27 @@ public partial class SidebarView : UserControl
         NotificationsButton.Content = unread > 0 ? $"🔔 {unread}" : "🔔";
 
         var query = SearchBox.Text?.Trim() ?? "";
-        var projects = Model.OrderedProjects
-            .Where(path => MatchesProject(path, query))
-            .Select(path => new ProjectSidebarEntry(
-                path, (Model.IsProjectPinned(path) ? "★ " : "") + Model.ProjectTitle(path), Directory.Exists(path)))
-            .ToList();
+        var projectPaths = Model.ProjectSidebarOrder.Where(path => MatchesProject(path, query)).ToList();
+        var projects = new List<ProjectSidebarEntry>();
+        if (Model.ProjectSidebarGrouping == "folder")
+        {
+            var groups = projectPaths.GroupBy(FolderKey)
+                .OrderBy(group => group.Key, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            foreach (var group in groups)
+            {
+                projects.Add(new ProjectSidebarEntry("", FolderTitle(group.Key, groups.Select(item => item.Key).ToList()), true, true));
+                projects.AddRange(group.Select(path => new ProjectSidebarEntry(
+                    path, (Model.IsProjectPinned(path) ? "★ " : "") + Model.ProjectTitle(path), Directory.Exists(path))));
+            }
+        }
+        else
+        {
+            projects.AddRange(projectPaths.Select(path => new ProjectSidebarEntry(
+                path, (Model.IsProjectPinned(path) ? "★ " : "") + Model.ProjectTitle(path), Directory.Exists(path))));
+        }
         ProjectList.ItemsSource = projects;
-        ProjectList.SelectedItem = projects.FirstOrDefault(project => SamePath(project.Path, Model.WorkspacePath));
+        ProjectList.SelectedItem = projects.FirstOrDefault(project => !project.IsGroupHeader && SamePath(project.Path, Model.WorkspacePath));
 
         var conversations = Model.Ordered(
                 Model.Bridge.Conversations
@@ -127,6 +141,7 @@ public partial class SidebarView : UserControl
         SitesButton.Content = "▦  " + Model.L("sidebar.sites");
         ToolTip.SetTip(NewButton, Model.L("sidebar.newChat"));
         ToolTip.SetTip(NewProjectButton, Model.L("sidebar.addProject"));
+        ToolTip.SetTip(ProjectsOptionsButton, Model.L("sidebar.editSidebarLayout"));
         ScheduledButton.Content = "◷  " + Model.L("settings.tasks");
         PluginsButton.Content = "◌  " + Model.L("settings.plugins");
         StatusText.Text = Model.StatusLine;
@@ -138,11 +153,55 @@ public partial class SidebarView : UserControl
             model.NewConversation();
     }
 
-    private void OnNoProject(object? sender, RoutedEventArgs e) => Model?.SetWorkspace("");
+    private void OnNoProject(object? sender, RoutedEventArgs e) => Model?.SelectNoProject();
 
     private async void OnPullRequests(object? sender, RoutedEventArgs e)
     {
         if (Model is not null) await Model.OpenPullRequestsAsync();
+    }
+
+    private void OnProjectOptions(object? sender, RoutedEventArgs e)
+    {
+        if (Model is not { } model || sender is not Control target) return;
+        var menu = new ContextMenu();
+        var grouping = new MenuItem { Header = model.L("sidebar.groupBy") };
+        grouping.Items.Add(ProjectOption(model.L("settings.folder"), model.ProjectSidebarGrouping == "folder", () => model.SetProjectSidebarGrouping("folder")));
+        grouping.Items.Add(ProjectOption(model.L("sidebar.projectGroupingNone"), model.ProjectSidebarGrouping == "none", () => model.SetProjectSidebarGrouping("none")));
+        menu.Items.Add(grouping);
+
+        var sorting = new MenuItem { Header = model.L("sidebar.sortProjectsBy") };
+        sorting.Items.Add(ProjectOption(model.L("sidebar.projectSortDefault"), model.ProjectSidebarSort == "recent", () => model.SetProjectSidebarSort("recent")));
+        sorting.Items.Add(ProjectOption(model.L("studio.home.sort.name"), model.ProjectSidebarSort == "name", () => model.SetProjectSidebarSort("name")));
+        menu.Items.Add(sorting);
+        menu.Items.Add(new Separator());
+
+        var reset = new MenuItem { Header = model.L("modelPicker.reset") };
+        reset.Click += (_, _) => model.ResetProjectSidebarOrganization();
+        menu.Items.Add(reset);
+        menu.Open(target);
+        e.Handled = true;
+    }
+
+    private static MenuItem ProjectOption(string title, bool selected, Action action)
+    {
+        var item = new MenuItem { Header = (selected ? "✓ " : "") + title };
+        item.Click += (_, _) => action();
+        return item;
+    }
+
+    private static string FolderKey(string path)
+    {
+        try { return Path.GetDirectoryName(Path.GetFullPath(path)) ?? ""; }
+        catch { return Path.GetDirectoryName(path) ?? ""; }
+    }
+
+    private static string FolderTitle(string path, IReadOnlyList<string> allPaths)
+    {
+        var name = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+        if (allPaths.Count(candidate => string.Equals(
+            Path.GetFileName(Path.TrimEndingDirectorySeparator(candidate)), name,
+            StringComparison.CurrentCultureIgnoreCase)) <= 1) return name;
+        return Path.Combine(Path.GetFileName(Path.GetDirectoryName(path) ?? ""), name);
     }
 
     private void OnNewProject(object? sender, RoutedEventArgs e)
@@ -193,6 +252,12 @@ public partial class SidebarView : UserControl
     private void OnProjectSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (Model is null || ProjectList.SelectedItem is not ProjectSidebarEntry project) return;
+        if (project.IsGroupHeader)
+        {
+            ProjectList.SelectedItem = ProjectList.Items.OfType<ProjectSidebarEntry>()
+                .FirstOrDefault(item => !item.IsGroupHeader && SamePath(item.Path, Model.WorkspacePath));
+            return;
+        }
         if (!project.IsAvailable)
         {
             ShowProjectLocationDialog(project.Path);
@@ -384,9 +449,10 @@ public partial class SidebarView : UserControl
     }
 }
 
-public sealed record ProjectSidebarEntry(string Path, string Title, bool IsAvailable)
+public sealed record ProjectSidebarEntry(string Path, string Title, bool IsAvailable, bool IsGroupHeader = false)
 {
-    public double Opacity => IsAvailable ? 1.0 : 0.46;
+    public string DisplayTitle => IsGroupHeader ? "▾ " + Title : "   " + Title;
+    public double Opacity => IsGroupHeader ? 0.72 : IsAvailable ? 1.0 : 0.46;
 }
 
 public sealed class ProjectTitleConverter : IValueConverter

@@ -40,6 +40,10 @@ function assetCacheControl(key: string): string {
   if (key.startsWith("marketplace/")) {
     return "public, max-age=60, s-maxage=60";
   }
+  // Media templates are revised in place and refreshed when the Templates tab opens.
+  if (key.startsWith("media-templates/")) {
+    return "public, max-age=60, s-maxage=60";
+  }
   // The model catalog is how a new model reaches installed apps.
   if (key.startsWith("catalog/")) {
     return "public, max-age=300, s-maxage=300";

@@ -17,7 +17,7 @@ struct HerNessMobileApp: App {
         apiKey: { "" },
         systemPrompt: { HerNessMobileApp.systemPrompt },
         oauthToken: { ChatGPTOAuth.accessToken(for: ChatGPTOAuth.activeAccountID()) },
-        sessionAccountID: { ChatGPTOAuth.activeAccountID() },
+        sessionAccountID: { ChatGPTQuota.shared.roomiestAccountID() },
         providerAPIKey: { provider in
             SecureStore().read(MobileAgent.credentialKey(for: provider)) ?? ""
         },
@@ -43,7 +43,7 @@ struct HerNessMobileApp: App {
                 apiKey: { "" },
                 systemPrompt: { Self.systemPrompt },
                 oauthToken: { ChatGPTOAuth.accessToken(for: ChatGPTOAuth.activeAccountID()) },
-                sessionAccountID: { ChatGPTOAuth.activeAccountID() },
+                sessionAccountID: { ChatGPTQuota.shared.roomiestAccountID() },
                 providerAPIKey: { provider in
                     SecureStore().read(MobileAgent.credentialKey(for: provider)) ?? ""
                 },

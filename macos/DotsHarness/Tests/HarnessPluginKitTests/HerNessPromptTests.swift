@@ -62,6 +62,13 @@ final class HerNessPromptTests: XCTestCase {
     }
 
     @MainActor
+    func testPriorConversationInferencesAreContextNotRepeatedOrReasked() {
+        let policy = HerNessPrompt.core(scope: "workspace", toolGuidance: "tools")
+        XCTAssertTrue(policy.contains("do not present an already shared inference as a new finding"))
+        XCTAssertTrue(policy.contains("ask the user to confirm it again"))
+    }
+
+    @MainActor
     func testMemoryGuidanceFollowsTheWorkspace() {
         let host = NativeAgentHost(paths: temporaryPaths(), endpoint: AgentEndpointController())
         let workspace = URL(fileURLWithPath: NSTemporaryDirectory())

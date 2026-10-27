@@ -63,6 +63,11 @@ public sealed class MediaLayer
     public double Arc { get; set; }
     /// <summary>A note pinned to the canvas: shown while editing, left out of previews and exports.</summary>
     public bool Comment { get; set; }
+    /// <summary>Normalized, reversible crop of an image source; null keeps older projects uncropped.</summary>
+    public double? CropX { get; set; }
+    public double? CropY { get; set; }
+    public double? CropWidth { get; set; }
+    public double? CropHeight { get; set; }
 
     public MediaLayer Clone() => MediaStudioJson.Clone(this);
 }
@@ -176,12 +181,12 @@ public sealed record MediaFrameGroup(string Id, IReadOnlyList<MediaFrameGroup.Pr
     ];
 }
 
-/// <summary>A ready-made canvas. Built from text and shapes only, so it needs no bundled assets.</summary>
-public sealed record MediaTemplate(string Id, string Category, Func<MediaCanvas> Build)
+/// <summary>A ready-made canvas decoded from the remotely maintained media template catalog.</summary>
+public sealed record MediaTemplate(string Id, string Category, Func<MediaCanvas> Build, string? DisplayTitle = null)
 {
     public static readonly string[] Categories = ["social", "uiux", "presentation", "other"];
 
-    public string Title => LocalizationService.Current.Get($"studio.template.{Id}");
+    public string Title => DisplayTitle ?? LocalizationService.Current.Get($"studio.template.{Id}");
 
     public MediaCanvas Canvas()
     {
@@ -192,56 +197,7 @@ public sealed record MediaTemplate(string Id, string Category, Func<MediaCanvas>
         return canvas;
     }
 
-    private static string T(string key) => LocalizationService.Current.Get(key);
-
-    private static MediaLayer Shape(string name, double x, double y, double w, double h, string color, string shape = "rectangle", double radius = 0) =>
-        new() { Name = name, Kind = "shape", X = x, Y = y, Width = w, Height = h, ColorHex = color, Shape = shape, CornerRadius = radius };
-
-    private static MediaLayer Text(string name, double x, double y, double w, double h, string text, double size, string color,
-        string alignment = "center", string weight = "bold") =>
-        new() { Name = name, Kind = "text", X = x, Y = y, Width = w, Height = h, Text = text, FontSize = size, ColorHex = color, Alignment = alignment, FontWeight = weight };
-
-    public static IReadOnlyList<MediaTemplate> All =>
-    [
-        new("announcement", "social", () => new MediaCanvas { Width = 1080, Height = 1080, BackgroundHex = "#14213D", Layers =
-        [
-            Shape("Band", 0, 760, 1080, 320, "#FCA311"),
-            Text("Title", 80, 250, 920, 260, T("studio.sample.title"), 110, "#FFFFFF", "leading"),
-            Text("Detail", 80, 830, 920, 160, T("studio.sample.detail"), 48, "#14213D", "leading", "medium"),
-        ] }),
-        new("story", "social", () => new MediaCanvas { Width = 1080, Height = 1920, BackgroundHex = "#F1FAEE", Layers =
-        [
-            Shape("Circle", 190, 420, 700, 700, "#E63946", "ellipse"),
-            Text("Title", 240, 640, 600, 260, T("studio.sample.title"), 96, "#FFFFFF"),
-            Text("Detail", 140, 1300, 800, 200, T("studio.sample.detail"), 54, "#1D3557", weight: "medium"),
-        ] }),
-        new("thumbnail", "social", () => new MediaCanvas { Width = 1280, Height = 720, BackgroundHex = "#0B132B", Layers =
-        [
-            Shape("Panel", 60, 60, 560, 600, "#5BC0BE", radius: 36),
-            Text("Title", 680, 190, 540, 240, T("studio.sample.title"), 92, "#FFFFFF", "leading"),
-            Text("Detail", 680, 450, 540, 120, T("studio.sample.detail"), 40, "#C9D6DF", "leading", "regular"),
-        ] }),
-        new("mobile", "uiux", () => new MediaCanvas { Width = 390, Height = 844, BackgroundHex = "#F8FAFC", Layers =
-        [
-            Shape("Hero", 24, 80, 342, 300, "#4F46E5", radius: 28),
-            Text("Title", 24, 420, 342, 90, T("studio.sample.title"), 34, "#0F172A", "leading"),
-            Text("Detail", 24, 520, 342, 60, T("studio.sample.detail"), 16, "#64748B", "leading", "regular"),
-            Shape("Button", 24, 720, 342, 56, "#0F172A", radius: 16),
-            Text("Label", 24, 734, 342, 28, T("studio.sample.text"), 17, "#FFFFFF"),
-        ] }),
-        new("slide", "presentation", () => new MediaCanvas { Width = 1920, Height = 1080, BackgroundHex = "#FAFAFA", Layers =
-        [
-            Shape("Rule", 140, 470, 220, 12, "#2A9D8F"),
-            Text("Title", 140, 240, 1500, 200, T("studio.sample.title"), 130, "#264653", "leading"),
-            Text("Detail", 140, 530, 1300, 200, T("studio.sample.detail"), 56, "#52616B", "leading", "regular"),
-        ] }),
-        new("logo", "other", () => new MediaCanvas { Width = 512, Height = 512, BackgroundHex = "#FFFFFF", Layers =
-        [
-            Shape("Mark", 156, 80, 200, 200, "#3D5A80", radius: 48),
-            Shape("Dot", 226, 150, 60, 60, "#EE6C4D", "ellipse"),
-            Text("Name", 56, 320, 400, 90, T("studio.sample.brand"), 64, "#293241"),
-        ] }),
-    ];
+    public static IReadOnlyList<MediaTemplate> All => [];
 }
 
 /// <summary>SF Symbols names the planner and macOS use, drawn as text glyphs on Windows and Linux.</summary>

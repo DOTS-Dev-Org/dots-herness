@@ -95,6 +95,7 @@ final class ChatGPTOAuth: NSObject, ObservableObject, ASWebAuthenticationPresent
             await refresh(refreshToken, accountID: profile.id)
         }
         reloadAccounts()
+        await ChatGPTQuota.shared.refresh(accounts.map(\.id))
     }
 
     func signOut() { removeAccount(accountID) }
@@ -278,5 +279,71 @@ final class ChatGPTOAuth: NSObject, ObservableObject, ASWebAuthenticationPresent
     private static func form(_ values: [(String, String)]) -> Data {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._~"))
         return Data(values.map { ($0.0.addingPercentEncoding(withAllowedCharacters: allowed) ?? $0.0) + "=" + ($0.1.addingPercentEncoding(withAllowedCharacters: allowed) ?? $0.1) }.joined(separator: "&").utf8)
+    }
+}
+
+/// Share of quota left per ChatGPT account, read from `/wham/usage` (the desktop
+/// `ChatGPTUsageService` contract). A new conversation starts on the roomiest
+/// account; a started one keeps the account it pinned (`conversationChatGPTAccountID`).
+@MainActor
+final class ChatGPTQuota {
+    static let shared = ChatGPTQuota()
+    private var remaining: [String: Double] = [:]
+    private var checkedAt: [String: Date] = [:]
+
+    /// Account for a conversation that has none yet. Reads a minute-old figure at
+    /// most; the refresh it starts serves the next conversation.
+    func roomiestAccountID() -> String {
+        let ids = ChatGPTOAuth.accountIDs()
+        Task { await refresh(ids) }
+        return Self.pick(ids, active: ChatGPTOAuth.activeAccountID(), remaining: remaining)
+    }
+
+    /// Most quota left first; unknown sits between healthy and spent; the
+    /// account picked in Settings breaks ties.
+    nonisolated static func pick(_ ids: [String], active: String, remaining: [String: Double]) -> String {
+        func rank(_ id: String) -> Double {
+            guard let left = remaining[id] else { return 0 }
+            return left <= 0 ? -1 : left
+        }
+        return ids.max { lhs, rhs in
+            rank(lhs) != rank(rhs) ? rank(lhs) < rank(rhs) : rhs == active
+        } ?? active
+    }
+
+    func refresh(_ ids: [String]) async {
+        let stale = ids.filter { checkedAt[$0].map { Date().timeIntervalSince($0) >= 60 } ?? true }
+        // Marked now so overlapping callers do not fetch the same account twice.
+        for id in stale { checkedAt[id] = Date() }
+        await withTaskGroup(of: (String, Double?).self) { group in
+            for id in stale {
+                let token = ChatGPTOAuth.accessToken(for: id)
+                group.addTask { (id, await Self.read(id, token: token)) }
+            }
+            for await (id, left) in group { remaining[id] = left }
+        }
+    }
+
+    nonisolated private static func read(_ id: String, token: String) async -> Double? {
+        guard !token.isEmpty, let url = URL(string: "https://chatgpt.com/backend-api/wham/usage") else { return nil }
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(id, forHTTPHeaderField: "ChatGPT-Account-Id")
+        request.setValue("codex_cli_rs", forHTTPHeaderField: "originator")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) == true else { return nil }
+        return remaining(data)
+    }
+
+    /// The tighter of the 5-hour and weekly windows.
+    nonisolated static func remaining(_ data: Data) -> Double? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let limit = root["rate_limit"] as? [String: Any] else { return nil }
+        let used = ["primary_window", "secondary_window"].compactMap { name -> Double? in
+            guard let raw = (limit[name] as? [String: Any])?["used_percent"] else { return nil }
+            return (raw as? NSNumber)?.doubleValue ?? (raw as? String).flatMap(Double.init)
+        }
+        return used.max().map { max(0, 1 - min($0, 100) / 100) }
     }
 }

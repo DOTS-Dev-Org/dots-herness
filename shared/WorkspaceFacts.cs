@@ -28,6 +28,12 @@ public static class WorkspaceFacts
     public const int MaxTextLength = 240;
 
     /// <summary>
+    /// A decision carries its reason, which is what lets a later task tell whether it
+    /// still applies. Mirrors decisionLimit in WorkspaceMemory+Transfer.swift.
+    /// </summary>
+    public const int MaxDecisionLength = 360;
+
+    /// <summary>
     /// Project facts learned from the code rather than told by the user: how it
     /// is laid out, the conventions it follows, the design system its interface
     /// is built from. They describe a codebase, so they may be longer than one
@@ -108,9 +114,7 @@ public static class WorkspaceFacts
         catch (System.Text.Json.JsonException) { return null; }
         var kind = (node?["kind"]?.GetValue<string>() ?? "").Trim().ToLowerInvariant();
         var key = Collapse(node?["key"]?.GetValue<string>() ?? "", MaxKeyLength).ToLowerInvariant();
-        var text = Collapse(
-            node?["text"]?.GetValue<string>() ?? "",
-            kind == "project" && KnowledgeKeys.Contains(key) ? MaxKnowledgeLength : MaxTextLength);
+        var text = Collapse(node?["text"]?.GetValue<string>() ?? "", LimitFor(kind, key));
         if (!Kinds.Contains(kind) || text.Length == 0) return null;
         if (key.Length == 0) key = kind == "decision" ? "decision" : "note";
         var requestedScope = (node?["scope"]?.GetValue<string>() ?? "").Trim().ToLowerInvariant();
@@ -283,8 +287,7 @@ public static class WorkspaceFacts
         var kind = fact.Kind.Trim().ToLowerInvariant();
         if (kind is not ("project" or "decision" or "preference")) return null;
         var key = Collapse(fact.Key, MaxKeyLength).ToLowerInvariant();
-        var limit = kind == "project" && KnowledgeKeys.Contains(key) ? MaxKnowledgeLength : MaxTextLength;
-        var text = Collapse(fact.Text, limit);
+        var text = Collapse(fact.Text, LimitFor(kind, key));
         return key.Length == 0 || text.Length == 0 ? null : new WorkspaceFact(kind, key, text, scope);
     }
 
@@ -439,10 +442,32 @@ public static class WorkspaceFacts
     private static string? UserStorePath(string? userRoot) =>
         string.IsNullOrWhiteSpace(userRoot) ? null : Path.Combine(userRoot, "user-facts.md");
 
-    private static string Collapse(string text, int limit)
+    public static int LimitFor(string kind, string key) => kind switch
     {
-        var value = Regex.Replace(text, @"\s+", " ").Trim();
-        return value.Length <= limit ? value : value[..limit];
+        "project" when KnowledgeKeys.Contains(key) => MaxKnowledgeLength,
+        "decision" => MaxDecisionLength,
+        _ => MaxTextLength,
+    };
+
+    private static string Collapse(string text, int limit) =>
+        Clip(Regex.Replace(text, @"\s+", " ").Trim(), limit);
+
+    /// <summary>
+    /// Past the limit a fact ends at the last sentence that fits, or failing that at a
+    /// word with "…", never in the middle of a word. Punctuation counts as a sentence end
+    /// only before a space, so "File.cs" is not one. Mirrors SecretRedaction.clipped.
+    /// </summary>
+    public static string Clip(string value, int limit)
+    {
+        if (value.Length <= limit) return value;
+        var cut = -1;
+        for (var index = 0; index < limit; index++)
+        {
+            if (".!?;".Contains(value[index]) && (index + 1 == value.Length || value[index + 1] == ' ')) cut = index + 1;
+        }
+        if (cut >= limit / 2) return value[..cut];
+        var space = value.LastIndexOf(' ', limit - 1, limit);
+        return space <= 0 ? value[..limit] : value[..space].TrimEnd(',', ';', ':', '—', ' ') + "…";
     }
 }
 

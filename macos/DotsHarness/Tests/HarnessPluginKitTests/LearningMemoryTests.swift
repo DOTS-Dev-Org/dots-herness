@@ -265,6 +265,17 @@ final class LearningMemoryTests: XCTestCase {
         )
     }
 
+    func testAReviewPromptStaysDismissedAcrossStoreInstances() throws {
+        let store = try makeStore("review-once")
+        let id = "signal:review-once"
+        try store.setLesson(Lesson(rule: "Run tests before reporting work done."), source: id)
+
+        try store.dismissLessonPrompt(id: id)
+
+        let reloaded = FeedbackStore(directory: try XCTUnwrap(store.directory))
+        XCTAssertEqual(reloaded.lessons().first?.reviewPromptDismissed, true)
+    }
+
     func testAnInferredLessonLearnedOnceFadesButWhatTheUserSaidStays() throws {
         let store = try makeStore("decay")
         let old = Date().addingTimeInterval(-200 * 24 * 60 * 60)
@@ -546,6 +557,38 @@ final class LearningMemoryTests: XCTestCase {
         XCTAssertFalse(cloned.needsProjectMemoryTrust, "a decision is asked once")
         try cloned.setProjectMemoryTrust(true)
         XCTAssertTrue(cloned.projectText().hasPrefix("Project memory, read from"))
+    }
+
+    /// Decisions end at a sentence, are kept once, and past their budget only the ones a
+    /// request names reach it; the cached project memory stays the same for every request.
+    func testDecisionsAreClippedDeduplicatedAndRankedPastTheirBudget() throws {
+        XCTAssertEqual(SecretRedaction.clipped("Keep File.swift small. Reason follows here", limit: 30), "Keep File.swift small.")
+        XCTAssertEqual(SecretRedaction.clipped("one two three four", limit: 12), "one two…")
+
+        let memory = try makeMemory("decisions")
+        memory.prepareForPrompt(prompt: "start", runID: UUID(), provider: "test", model: "test")
+        try memory.recordProjectDecision(summary: "macOS provider settings show each account's five-hour and weekly usage windows separately with reset times.")
+        try memory.recordProjectDecision(summary: "macOS, Windows and Linux provider settings show each account's five-hour and weekly usage windows separately with reset times.")
+        XCTAssertEqual(memory.decisionInsights().count, 1, "a restated decision replaces the old wording")
+        // A decision keeps its reason past the 240 characters other facts get.
+        let reason = String(repeating: "word ", count: 50) + "Reason: the reason survives."
+        try memory.recordProjectDecision(summary: "Ship SQLite only. " + reason)
+        XCTAssertTrue(memory.decisionInsights().contains { $0.text.hasSuffix("the reason survives.") })
+        XCTAssertTrue(memory.projectText().contains("Windows and Linux"))
+
+        // Distinct subjects: decisions that differ only in a name would read as one.
+        let names = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet",
+                     "kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo", "sierra", "tango"]
+        for name in names {
+            try memory.recordProjectDecision(summary: "The \(name) module stores \(name)cache in \(name)store with \(name)index files kept beside \(name)journal.")
+        }
+        let project = memory.projectText()
+        XCTAssertFalse(project.contains("deltacache"), "past the budget decisions leave the cached section")
+        XCTAssertEqual(memory.projectText(), project)
+        let history = memory.historyText(for: "what about deltacache")
+        XCTAssertTrue(history.contains("deltacache"))
+        XCTAssertFalse(history.contains("echocache"))
+        XCTAssertTrue(memory.recallText(query: "echostore").contains("echocache"))
     }
 
     private func makeMemory(_ name: String) throws -> WorkspaceMemory {

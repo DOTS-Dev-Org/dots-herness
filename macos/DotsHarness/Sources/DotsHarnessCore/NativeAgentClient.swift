@@ -283,6 +283,8 @@ public struct NativeAgentClient: Sendable {
             } else {
                 result = try Self.chatCompletionFromSSE(responseData)
             }
+            result.rateLimitRemaining = NativeAgentError.rateLimitRemaining(from: response)
+            result.rateLimitResetsAt = NativeAgentError.retryAt(from: response)
             if configuration.api == RouterAPIKind.chatGPT.rawValue {
                 let responseToolNames = ToolCloak.responsesNameMap(
                     for: tools.map(\.name) + messages.flatMap { $0.toolCalls.map(\.name) }

@@ -70,6 +70,20 @@ public sealed class WorkspaceLessonsTests : IDisposable
         Assert.Contains("\"lastSeen\"", File.ReadAllText(Path.Combine(_workspace, ".mem", "lessons.json")));
     }
 
+    [Fact]
+    public void AReviewPromptIsPersistedAsShownAndSurvivesLessonReinforcement()
+    {
+        const string id = "signal:review";
+        WorkspaceLessons.Set(_workspace, Make("Run tests before reporting work done."), id);
+
+        Assert.True(WorkspaceLessons.DismissReviewPrompt(_workspace, id));
+        Assert.True(WorkspaceLessons.Read(_workspace).Single().ReviewPromptDismissed);
+
+        WorkspaceLessons.Set(_workspace, Make("Run tests before reporting work done.", "finishing a change"), "signal:reinforced");
+        Assert.True(WorkspaceLessons.Read(_workspace).Single().ReviewPromptDismissed);
+        Assert.Contains("\"reviewPromptDismissed\": true", File.ReadAllText(Path.Combine(_workspace, ".mem", "lessons.json")));
+    }
+
     /// The budget drops the weakest lessons, never one the user said, and what the user wrote
     /// by hand reaches the prompt whole.
     [Fact]

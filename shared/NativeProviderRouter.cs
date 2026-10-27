@@ -780,6 +780,26 @@ public sealed class NativeProviderRouter
     /// <summary>Current in-memory remaining quota, supplied by the app-wide usage poll.</summary>
     public Func<IReadOnlyDictionary<string, AccountUsageSnapshot>>? RefreshUsage { get; set; }
 
+    /// Share left per account from the last completion's `x-ratelimit-*`
+    /// headers, for subscriptions no usage endpoint covers (Grok Build).
+    /// ponytail: those headers meter a short window, not the plan; replace with
+    /// a usage endpoint once the provider publishes one.
+    internal readonly ConcurrentDictionary<string, (double Remaining, DateTimeOffset ResetsAt)> HeaderUsage = new();
+
+    internal static double? RateLimitRemaining(HttpResponseMessage response)
+    {
+        double? Number(string name) =>
+            response.Headers.TryGetValues(name, out var values)
+            && double.TryParse(values.FirstOrDefault()?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+                ? value : null;
+        var shares = new[] { "requests", "tokens" }
+            .Select(kind => Number($"x-ratelimit-remaining-{kind}") is { } left && Number($"x-ratelimit-limit-{kind}") is { } limit && limit > 0
+                ? Math.Clamp(left / limit, 0, 1) : (double?)null)
+            .OfType<double>()
+            .ToList();
+        return shares.Count == 0 ? null : shares.Min();
+    }
+
     /// Reasoning effort for requests. Empty = provider default; ignored for models
     /// that do not list the level in <see cref="NativeEffortCatalog"/>.
     public string Effort { get; set; } = "";
@@ -831,17 +851,22 @@ public sealed class NativeProviderRouter
         NativeCacheSession? cacheSession = null)
     {
         var usageSnapshot = RefreshUsage?.Invoke();
+        var now = DateTimeOffset.UtcNow;
         double RemainingRank(NativeProviderAccount account)
         {
-            if (usageSnapshot is null || !usageSnapshot.TryGetValue(account.Id, out var snapshot)
-                || snapshot.UsedFraction is not { } used) return 0;
-            var remaining = 1 - Math.Clamp(used, 0, 1);
-            return remaining <= 0 ? -1 : remaining;
+            double? left = usageSnapshot is not null && usageSnapshot.TryGetValue(account.Id, out var snapshot)
+                && snapshot.UsedFraction is { } used
+                ? 1 - Math.Clamp(used, 0, 1)
+                : HeaderUsage.TryGetValue(account.Id, out var header) && header.ResetsAt > now ? header.Remaining : null;
+            if (left is not { } value) return 0;
+            return value <= 0 ? -1 : value;
         }
+        // Quota first; the first-connected account only breaks a tie.
         var allCandidates = _store.State.Accounts
             .Where(a => a.Active && (string.IsNullOrWhiteSpace(model) || CanServe(a, model)))
             .OrderByDescending(RemainingRank)
             .ThenBy(a => a.Priority)
+            .ThenBy(a => string.Equals(a.Id, _store.State.SelectedAccountId, StringComparison.Ordinal) ? 0 : 1)
             .ToList();
         var candidates = allCandidates.ToList();
         if (!string.IsNullOrWhiteSpace(excludedAccountId))
@@ -850,7 +875,6 @@ public sealed class NativeProviderRouter
         // preserve the retry path; there is no alternate account to switch to.
         if (candidates.Count == 0 && allCandidates.Count > 0) candidates = allCandidates;
         var preferred = candidates.FirstOrDefault(a => string.Equals(a.Id, preferredAccountId, StringComparison.Ordinal));
-        var selected = candidates.FirstOrDefault(a => string.Equals(a.Id, _store.State.SelectedAccountId, StringComparison.Ordinal));
         List<NativeProviderAccount> routes;
         if (preferred is not null && !allowAccountFailoverAfterLimit)
         {
@@ -864,9 +888,8 @@ public sealed class NativeProviderRouter
         }
         else
         {
-            routes = selected is null
-                ? candidates
-                : [selected, .. candidates.Where(a => !string.Equals(a.Id, selected.Id, StringComparison.Ordinal))];
+            // A new conversation takes the account with the most quota left.
+            routes = candidates;
         }
         if (routes.Count == 0) throw new NativeProviderException("Connect a provider account before starting a conversation.");
         var failures = new List<string>();
@@ -1161,6 +1184,8 @@ public sealed class NativeProviderRouter
         var prepareMilliseconds = (int)Math.Clamp((DateTimeOffset.UtcNow - preparationStartedAt).TotalMilliseconds, 0, int.MaxValue);
         var requestStartedAt = DateTimeOffset.UtcNow;
         using var response = await _http.SendAsync(request, ct);
+        if (response.IsSuccessStatusCode && RateLimitRemaining(response) is { } headerRemaining)
+            HeaderUsage[route.Id] = (headerRemaining, RetryAt(response) ?? DateTimeOffset.UtcNow.AddMinutes(1));
         var text = await response.Content.ReadAsStringAsync(ct);
         // A Codex success body is an SSE stream, not JSON. Error bodies stay JSON
         // on every route, so parsing failure here just means "no structured error".

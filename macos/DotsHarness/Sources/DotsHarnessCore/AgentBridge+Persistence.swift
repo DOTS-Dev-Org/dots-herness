@@ -60,7 +60,11 @@ extension NativeAgentHost {
             return
         }
         let previousSelection = selectedID
-        conversations = store.loadHeaders(workspacePath: workspacePath).map(Self.recoverListed)
+        // A nil workspace is the standalone-chat scope, not an all-project query.
+        let headers = store.loadHeaders(workspacePath: workspacePath)
+        conversations = headers
+            .filter { workspacePath != nil || $0.projectless }
+            .map(Self.recoverListed)
         let nextSelection = initialSelection()
         selectedID = nextSelection
         // Reloading the same workspace replaces its rows with headers but does not

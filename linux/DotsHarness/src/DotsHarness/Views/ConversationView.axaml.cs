@@ -48,6 +48,7 @@ public partial class ConversationView : UserControl
     private ChatMessage? _observedTailMessage;
     private MessageTail<ChatMessage>? _messageTail;
     private bool _loadingOlder;
+    private bool _followTranscriptTail = true;
     private int _modelChangeRevision;
     private int _modelBindScheduled;
     private int _messageLanguageRefreshPending;
@@ -195,7 +196,10 @@ public partial class ConversationView : UserControl
 
     private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
-        if (!ReferenceEquals(e.Source, Scroller) || _loadingOlder) return;
+        if (!ReferenceEquals(e.Source, Scroller)) return;
+        if (e.OffsetDelta.Y != 0)
+            _followTranscriptTail = IsNearBottom();
+        if (_loadingOlder) return;
         var scrolledNearTop = e.OffsetDelta.Y < 0 && Scroller.Offset.Y < 200;
         if (!scrolledNearTop) return;
         if (_messageTail is { HasOlder: true } tail)
@@ -232,27 +236,30 @@ public partial class ConversationView : UserControl
         finally { _loadingOlder = false; }
     }
 
-    private void TryScrollToEndIfNearBottom()
+    private void TryScrollToEndIfFollowing()
     {
-        if (IsNearBottom()) Scroller.ScrollToEnd();
+        if (_followTranscriptTail) Scroller.ScrollToEnd();
     }
 
-    private void QueueScrollToEndIfNearBottom()
+    private void QueueScrollToEndIfFollowing()
     {
         if (System.Threading.Interlocked.Exchange(ref _scrollScheduled, 1) != 0) return;
         Dispatcher.UIThread.Post(() =>
         {
             System.Threading.Interlocked.Exchange(ref _scrollScheduled, 0);
-            TryScrollToEndIfNearBottom();
+            TryScrollToEndIfFollowing();
         }, DispatcherPriority.Background);
     }
 
     private void QueueScrollToEndAfterLayout()
     {
-        Dispatcher.UIThread.Post(() => Scroller.ScrollToEnd(), DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_followTranscriptTail) Scroller.ScrollToEnd();
+        }, DispatcherPriority.Loaded);
     }
 
-    // Banners and a taller composer shrink the transcript without moving its offset, which slides the last message out of view.
+    // Keep the latest content visible after layout only while the reader follows the tail.
     private void OnTranscriptSizeChanged(object? sender, SizeChangedEventArgs e)
     {
         if (e.NewSize.Height < e.PreviousSize.Height) QueueScrollToEndAfterLayout();
@@ -262,13 +269,13 @@ public partial class ConversationView : UserControl
     {
         ObserveTailMessage(_observedConversation);
         Dispatcher.UIThread.Post(BindPlan);
-        QueueScrollToEndIfNearBottom();
+        QueueScrollToEndIfFollowing();
     }
 
     private void OnPendingChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         Dispatcher.UIThread.Post(BindQueue);
-        QueueScrollToEndIfNearBottom();
+        QueueScrollToEndIfFollowing();
     }
 
     private void OnMessagePropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -283,7 +290,7 @@ public partial class ConversationView : UserControl
         {
             if (e.PropertyName == nameof(ChatMessage.Streaming) && _observedTailMessage?.Streaming == false)
                 Dispatcher.UIThread.Post(BindPlan);
-            QueueScrollToEndIfNearBottom();
+            QueueScrollToEndIfFollowing();
         }
         else if (e.PropertyName == nameof(ChatMessage.RawToolOutput))
             Dispatcher.UIThread.Post(BindPlan);
@@ -473,7 +480,13 @@ public partial class ConversationView : UserControl
         }
         BindTerminal();
         if (switched && conversation is not null)
-            Dispatcher.UIThread.Post(() => Scroller.ScrollToEnd(), DispatcherPriority.Background);
+        {
+            _followTranscriptTail = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_followTranscriptTail) Scroller.ScrollToEnd();
+            }, DispatcherPriority.Background);
+        }
     }
 
     private string BuildContextComposition(Conversation? conversation)
@@ -1270,8 +1283,10 @@ public partial class ConversationView : UserControl
     private void OnDragOver(object? sender, DragEventArgs e)
     {
         var acceptsFiles = e.Data.Contains(DataFormats.Files);
-        e.DragEffects = acceptsFiles ? DragDropEffects.Copy : DragDropEffects.None;
-        DropHint.IsVisible = acceptsFiles;
+        var acceptsImages = e.Data.GetDataFormats().Any(format => DraftImageExtension(format) is not null);
+        var acceptsDrop = acceptsFiles || acceptsImages;
+        e.DragEffects = acceptsDrop ? DragDropEffects.Copy : DragDropEffects.None;
+        DropHint.IsVisible = acceptsDrop;
         e.Handled = true;
     }
 
@@ -1280,15 +1295,80 @@ public partial class ConversationView : UserControl
         DropHint.IsVisible = false;
     }
 
-    private void OnDrop(object? sender, DragEventArgs e)
+    private async void OnDrop(object? sender, DragEventArgs e)
     {
         DropHint.IsVisible = false;
-        if (Model is not null && e.Data.GetFiles() is { } files)
-        {
-            var paths = files.Select(file => file.Path.LocalPath).ToArray();
-            Model.AddDraftAttachments(paths);
-        }
         e.Handled = true;
+        if (Model is not { } model) return;
+
+        if (e.Data.GetFiles() is { } files)
+        {
+            await model.AddDraftAttachmentsAsync(files.Select(file => file.Path.LocalPath));
+            return;
+        }
+
+        try
+        {
+            var format = e.Data.GetDataFormats().FirstOrDefault(value => DraftImageExtension(value) is not null);
+            if (format is null) return;
+            var payload = e.Data.Get(format);
+            var extension = payload is Bitmap ? "png" : DraftImageExtension(format)!;
+            var imageData = await ReadImageDropDataAsync(payload);
+            if (imageData is not null) await model.AddDraftImageDataAsync(imageData, extension);
+        }
+        catch (Exception error)
+        {
+            System.Diagnostics.Debug.WriteLine($"Unable to import dropped image: {error.Message}");
+        }
+    }
+
+    private static string? DraftImageExtension(string format)
+    {
+        if (!format.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) return null;
+        var subtype = format[(format.IndexOf('/') + 1)..].Split(';', 2)[0].ToLowerInvariant();
+        return subtype switch
+        {
+            "jpeg" or "pjpeg" => "jpg",
+            "png" or "x-png" => "png",
+            "gif" => "gif",
+            "webp" => "webp",
+            "bmp" or "x-ms-bmp" => "bmp",
+            "tiff" or "x-tiff" => "tiff",
+            "heic" => "heic",
+            "heif" => "heif",
+            "avif" => "avif",
+            _ => null,
+        };
+    }
+
+    private static async Task<byte[]?> ReadImageDropDataAsync(object? payload)
+    {
+        try
+        {
+            return payload switch
+            {
+                byte[] bytes => bytes,
+                ReadOnlyMemory<byte> memory => memory.ToArray(),
+                MemoryStream stream => stream.ToArray(),
+                Stream stream => await Task.Run(() =>
+                {
+                    using var copy = new MemoryStream();
+                    stream.CopyTo(copy);
+                    return copy.ToArray();
+                }),
+                Bitmap bitmap => await Task.Run(() =>
+                {
+                    using var copy = new MemoryStream();
+                    bitmap.Save(copy);
+                    return copy.ToArray();
+                }),
+                _ => null,
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void OnRemoveAttachment(object? sender, RoutedEventArgs e)
@@ -1384,7 +1464,8 @@ public partial class ConversationView : UserControl
     {
         if (TopLevel.GetTopLevel(this) is not { } top) return;
         var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { AllowMultiple = true });
-        Model?.AddDraftAttachments(files.Select(file => file.Path.LocalPath));
+        if (Model is { } model)
+            await model.AddDraftAttachmentsAsync(files.Select(file => file.Path.LocalPath));
     }
 
     private async Task ChooseProjectAsync()
@@ -1632,6 +1713,7 @@ public partial class ConversationView : UserControl
         var lastAssistantIndex = transcript.FindLastIndex(message => message.Kind == ChatKind.Assistant && !message.Streaming);
         var completed = selected is not null
             && steps.Count > 0
+            && steps.All(step => step.Status == "done")
             && !selected.Running
             && selected.Continuation is null
             && selected.PendingPrompts.Count == 0
@@ -1656,7 +1738,7 @@ public partial class ConversationView : UserControl
         {
             var row = new TextBlock
             {
-                Text = (completed ? "✓  " : step.Status switch { "done" => "✓  ", "in_progress" => "◌  ", _ => "○  " }) + step.Title,
+                Text = (completed ? "✓  " : step.Status switch { "done" => "✓  ", "in_progress" => selected?.Running == true ? "◌  " : "⏸  ", _ => "○  " }) + step.Title,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, completed ? 0 : 1, 0, completed ? 0 : 1),
                 FontWeight = step.Status == "in_progress" ? FontWeight.SemiBold : FontWeight.Normal,
@@ -1954,6 +2036,27 @@ public partial class ConversationView : UserControl
         var suggestion = string.IsNullOrWhiteSpace(DraftBox.Text) ? Model.ActiveFollowUpSuggestion : null;
         FollowUpSuggestionBanner.IsVisible = suggestion is not null;
         FollowUpSuggestionText.Text = suggestion ?? "";
+
+        IReadOnlyList<string> choices = string.IsNullOrWhiteSpace(DraftBox.Text)
+            ? Model.ActiveFollowUpChoices
+            : Array.Empty<string>();
+        FollowUpReplyButtons.Children.Clear();
+        FollowUpReplyButtons.IsVisible = choices.Count > 0;
+        foreach (var choice in choices)
+        {
+            var button = new Button
+            {
+                Tag = choice,
+                Padding = new Thickness(12, 6),
+                Margin = new Thickness(0, 0, 8, 8),
+                MaxWidth = 360,
+                Content = new TextBlock { Text = choice, TextWrapping = TextWrapping.Wrap },
+            };
+            ToolTip.SetTip(button, choice);
+            button.Click += OnSendFollowUpReply;
+            FollowUpReplyButtons.Children.Add(button);
+        }
+
         if (suggestion is not null)
         {
             ToolTip.SetTip(AcceptFollowUpSuggestionButton, Model.L("access.accept"));
@@ -1969,6 +2072,16 @@ public partial class ConversationView : UserControl
         DraftBox.CaretIndex = DraftBox.Text.Length;
         Model.Bridge.ClearFollowUpSuggestion();
         DraftBox.Focus();
+    }
+
+    private void OnSendFollowUpReply(object? sender, RoutedEventArgs e)
+    {
+        if (Model is null || !string.IsNullOrWhiteSpace(DraftBox.Text)
+            || sender is not Button { Tag: string reply }) return;
+        Model.Draft = reply;
+        DraftBox.Text = reply;
+        Model.Bridge.ClearFollowUpSuggestion();
+        Model.Send(PromptMode.Queue);
     }
 
     private void OnAcceptFollowUpSuggestion(object? sender, RoutedEventArgs e) => AcceptFollowUpSuggestion();
@@ -2520,15 +2633,61 @@ public sealed class RunSummaryLabel : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException();
 }
 
+public sealed class AsyncAttachmentImage : Image
+{
+    public static readonly StyledProperty<string?> FilePathProperty =
+        AvaloniaProperty.Register<AsyncAttachmentImage, string?>(nameof(FilePath));
+
+    private int _loadVersion;
+
+    public string? FilePath
+    {
+        get => GetValue(FilePathProperty);
+        set => SetValue(FilePathProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == FilePathProperty) _ = LoadThumbnailAsync(FilePath);
+    }
+
+    private async Task LoadThumbnailAsync(string? path)
+    {
+        var version = ++_loadVersion;
+        Source = null;
+        if (!AttachmentImage.IsSupportedImagePath(path)) return;
+        try
+        {
+            var bitmap = await Task.Run(() =>
+            {
+                using var stream = File.OpenRead(path!);
+                return Bitmap.DecodeToWidth(stream, 512);
+            });
+            if (version == _loadVersion) Source = bitmap;
+            else bitmap.Dispose();
+        }
+        catch
+        {
+            if (version == _loadVersion) Source = null;
+        }
+    }
+}
+
 public sealed class AttachmentImage : IValueConverter
 {
     public static readonly AttachmentImage Instance = new();
 
+    internal static bool IsSupportedImagePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        return extension is ".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" or ".tif" or ".tiff" or ".heic" or ".heif" or ".avif";
+    }
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value is not string path || !File.Exists(path)) return null;
-        var extension = Path.GetExtension(path).ToLowerInvariant();
-        if (extension is not (".png" or ".jpg" or ".jpeg" or ".gif" or ".webp" or ".bmp" or ".tif" or ".tiff" or ".heic" or ".heif" or ".avif")) return null;
+        if (value is not string path || !File.Exists(path) || !IsSupportedImagePath(path)) return null;
         try { return new Bitmap(path); }
         catch { return null; }
     }

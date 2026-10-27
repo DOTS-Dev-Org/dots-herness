@@ -320,11 +320,44 @@ extension WorkspaceMemory {
     /// Findings and retained task outcomes that share a word with `query`, best first, for `recall`.
     public func recallText(query: String) -> String {
         let found = rankedInsights(sortedInsights(), for: query).prefix(Self.recallLimit)
+        let decisions = rankedInsights(decisionInsights(), for: query).prefix(Self.recallLimit)
         let tasks = relevantTasks(for: query)
         return [
+            decisions.isEmpty ? "" : "Project decisions:\n" + decisions.map { "- `\($0.id)`: \($0.text)" }.joined(separator: "\n"),
             found.isEmpty ? "" : "Findings:\n" + found.map(Self.line).joined(separator: "\n"),
             tasks.isEmpty ? "" : "Earlier task outcomes:\n" + tasks,
         ].filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
+
+    /// What the project's decisions may take of the cached project memory, in characters:
+    /// about 500 tokens. Past it they leave that section, and the ones a request names come
+    /// with the request instead; see `decisionsText(for:)`.
+    static let decisionBudget = 2_000
+
+    /// The project's decisions, from `.mem/facts.md`, in the shape recall ranks.
+    func decisionInsights() -> [MemoryInsight] {
+        projectMemoryFacts().filter { $0.kind == "decision" }.sorted { $0.key < $1.key }.map {
+            MemoryInsight(id: $0.key, kind: .decision, text: $0.text, files: [], tools: [], keywords: nil,
+                          runs: [], strength: 1, updatedAt: "")
+        }
+    }
+
+    /// Every decision while they fit the budget, unchanged from one request to the next so
+    /// the project memory stays cached; nil past it.
+    func allDecisionsText() -> String? {
+        let lines = decisionInsights().map { "- `\($0.id)`: \($0.text)" }
+        return lines.reduce(0, { $0 + $1.count + 1 }) <= Self.decisionBudget ? lines.joined(separator: "\n") : nil
+    }
+
+    /// Past the budget: the decisions sharing words with the request, best first, whole lines
+    /// until the budget is full. A decision the request does not name is left to `recall`.
+    func decisionsText(for prompt: String) -> String {
+        guard allDecisionsText() == nil else { return "" }
+        var used = 0
+        return rankedInsights(decisionInsights(), for: prompt).map { "- `\($0.id)`: \($0.text)" }.prefix { line in
+            used += line.count + 1
+            return used <= Self.decisionBudget
+        }.joined(separator: "\n")
     }
 
     private func sortedInsights() -> [MemoryInsight] {
@@ -350,7 +383,7 @@ extension WorkspaceMemory {
     }
 
     /// The findings sharing a word with `text`, best first; the ones sharing none are left out.
-    private func rankedInsights(_ all: [MemoryInsight], for text: String) -> [MemoryInsight] {
+    func rankedInsights(_ all: [MemoryInsight], for text: String) -> [MemoryInsight] {
         let terms = FeedbackStore.tokens(text)
         let indexed = all.map { ($0, FeedbackStore.tokens(([$0.text] + $0.files + $0.tools + ($0.keywords ?? [])).joined(separator: " "))) }
         func matches(_ term: String, _ token: String) -> Bool {

@@ -510,6 +510,9 @@ public struct AgentResponse: Sendable, Equatable {
     /// Request start to the first SSE output delta. Nil when the endpoint
     /// answered with a plain JSON body, where no first-token time exists.
     public var firstTokenMilliseconds: Int?
+    /// Share of the `x-ratelimit-*` allowance left after this request, when sent.
+    public var rateLimitRemaining: Double?
+    public var rateLimitResetsAt: Date?
 
     public init(
         message: AgentMessage,
@@ -633,6 +636,20 @@ public struct NativeAgentError: Error, Sendable, LocalizedError, Equatable {
     /// Reads the moment a rate-limited provider will serve again. Providers disagree
     /// on the header and on the format: seconds to wait, an HTTP date, or a Unix or
     /// ISO-8601 instant. Anything unparseable is left nil rather than guessed at.
+    /// The tighter of the request and token allowances in `x-ratelimit-*`
+    /// headers, as a share left. Nil when the provider sends neither pair.
+    public static func rateLimitRemaining(from response: URLResponse?) -> Double? {
+        guard let http = response as? HTTPURLResponse else { return nil }
+        func number(_ name: String) -> Double? {
+            http.value(forHTTPHeaderField: name).flatMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        }
+        return ["requests", "tokens"].compactMap { kind -> Double? in
+            guard let left = number("x-ratelimit-remaining-\(kind)"),
+                  let limit = number("x-ratelimit-limit-\(kind)"), limit > 0 else { return nil }
+            return min(max(left / limit, 0), 1)
+        }.min()
+    }
+
     public static func retryAt(from response: URLResponse?, now: Date = Date()) -> Date? {
         guard let http = response as? HTTPURLResponse else { return nil }
         let names = [

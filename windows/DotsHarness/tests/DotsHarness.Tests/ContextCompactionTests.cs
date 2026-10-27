@@ -293,6 +293,17 @@ public sealed class ContextCompactionTests
     }
 
     [Fact]
+    public void FollowUpChoicesNormalizeToAtMostTwoDistinctReplies()
+    {
+        Assert.Equal(
+            new[] { "Apply the recommended change", "Keep the current behavior" },
+            FollowUpSuggestions.NormalizeChoices("1. Apply the recommended change\n2) Keep the current behavior\n3. Ignore")
+        );
+        Assert.Equal(new[] { "Push it" }, FollowUpSuggestions.NormalizeChoices(" Push it "));
+        Assert.Empty(FollowUpSuggestions.NormalizeChoices(" "));
+    }
+
+    [Fact]
     public void EconomyModeSkipsFollowUpSuggestionsAndTransientProgressTokens()
     {
         Assert.True(FollowUpSuggestions.ShouldGenerate(true, false, false, false, economy: false));

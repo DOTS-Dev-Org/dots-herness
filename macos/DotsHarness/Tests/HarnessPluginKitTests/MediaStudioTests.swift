@@ -77,7 +77,7 @@ final class MediaStudioTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let store = MediaStudioStore(root: root)
         store.loadIfNeeded()
-        var project = store.create(name: "Poster", canvas: MediaTemplate.all[0].canvas())
+        var project = store.create(name: "Poster", canvas: MediaCanvas(name: "Poster", width: 1080, height: 1080))
 
         let source = root.appendingPathComponent("source.png")
         try Data([1, 2, 3]).write(to: source)

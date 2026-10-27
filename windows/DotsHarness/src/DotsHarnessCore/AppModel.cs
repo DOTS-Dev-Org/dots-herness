@@ -73,6 +73,9 @@ public sealed partial class AppModel : ObservableObject
     public string? ActiveFollowUpSuggestion => Bridge.FollowUpConversationId == SelectedConversationId
         ? Bridge.FollowUpSuggestion
         : null;
+    public IReadOnlyList<string> ActiveFollowUpChoices => Bridge.FollowUpConversationId == SelectedConversationId
+        ? Bridge.FollowUpChoices
+        : Array.Empty<string>();
     public BrowserBackend? SelectedBrowserBackend { get; private set; }
     public RemoteControlEventHub RemoteEvents { get; }
     public RemoteControlHost RemoteControl { get; }
@@ -604,6 +607,7 @@ public sealed partial class AppModel : ObservableObject
                 OnPropertyChanged(nameof(IsNoProjectScope));
                 OnPropertyChanged(nameof(MissingProjectPath));
                 OnPropertyChanged(nameof(ActiveFollowUpSuggestion));
+                OnPropertyChanged(nameof(ActiveFollowUpChoices));
             };
             if (bridge.SkillSuggestions is { } bridgeSuggestions)
             {
@@ -801,7 +805,7 @@ public sealed partial class AppModel : ObservableObject
             e.Text,
             e.ConversationId,
             conversation?.Cwd,
-            isRead: e.ConversationId is not null && Bridge.SelectedId == e.ConversationId);
+            isRead: false);
     }
 
     private void OnInboxRunSummary(object? sender, RunSummaryEventArgs e)
@@ -836,7 +840,7 @@ public sealed partial class AppModel : ObservableObject
             e.Detail,
             e.ConversationId,
             conversation?.Cwd,
-            isRead: Bridge.SelectedId == e.ConversationId);
+            isRead: e.Kind != "question" && Bridge.SelectedId == e.ConversationId);
     }
 
     public void Remount()
@@ -927,16 +931,41 @@ public sealed partial class AppModel : ObservableObject
         Remount();
     }
 
-    public void NewConversation()
+    public void NewConversation() => _ = NewConversationAsync();
+
+    public async Task NewConversationAsync()
     {
-        if (Bridge.IsNoProjectScope)
+        if (Bridge.RemoteTarget is null
+            && Bridge.IsNoProjectScope
+            && Bridge.Selected is { Projectless: true })
         {
-            _ = Bridge.NewProjectlessConversationAsync();
+            await Bridge.NewProjectlessConversationAsync();
             return;
         }
-        if (!Bridge.CanSendSelectedConversation) return;
+        if (Bridge.RemoteTarget is not null)
+        {
+            await Bridge.NewConversationAsync(Bridge.Selected?.Cwd ?? WorkspacePath);
+            return;
+        }
+
         var workspace = Bridge.Selected?.Cwd ?? WorkspacePath;
-        _ = Bridge.NewConversationAsync(workspace);
+        if (string.IsNullOrWhiteSpace(workspace))
+        {
+            workspace = Projects.FirstOrDefault(Directory.Exists);
+            if (workspace is null)
+            {
+                await Bridge.NewProjectlessConversationAsync();
+                return;
+            }
+        }
+        if (!Directory.Exists(workspace)) return;
+
+        if (!SameWorkspacePath(WorkspacePath, workspace) || !Bridge.CanSendSelectedConversation)
+        {
+            await SetWorkspaceAsync(workspace);
+            if (!SameWorkspacePath(WorkspacePath, workspace)) return;
+        }
+        await Bridge.NewConversationAsync(workspace);
     }
 
     /// Rechecks all saved rows so the sidebar and composer react when a folder
@@ -1012,6 +1041,51 @@ public sealed partial class AppModel : ObservableObject
 
     /// Pinned projects first; each half keeps the saved project order.
     public IReadOnlyList<string> OrderedProjects => Projects.OrderByDescending(IsProjectPinned).ToList();
+
+    public string ProjectSidebarGrouping => Host.Settings.Get("agent.projectSidebarGrouping")?.AsString() == "none"
+        ? "none"
+        : "folder";
+
+    public string ProjectSidebarSort => Host.Settings.Get("agent.projectSidebarSort")?.AsString() == "name"
+        ? "name"
+        : "recent";
+
+    public IReadOnlyList<string> ProjectSidebarOrder
+    {
+        get
+        {
+            var projects = OrderedProjects;
+            return ProjectSidebarSort == "name"
+                ? projects.OrderByDescending(IsProjectPinned)
+                    .ThenBy(ProjectTitle, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList()
+                : projects;
+        }
+    }
+
+    public void SetProjectSidebarGrouping(string grouping)
+    {
+        if (grouping is not ("folder" or "none") || ProjectSidebarGrouping == grouping) return;
+        Host.Settings.Set("agent.projectSidebarGrouping", JsonValue.String(grouping));
+        PersistSettings();
+        OnPropertyChanged(nameof(Projects));
+    }
+
+    public void SetProjectSidebarSort(string sort)
+    {
+        if (sort is not ("recent" or "name") || ProjectSidebarSort == sort) return;
+        Host.Settings.Set("agent.projectSidebarSort", JsonValue.String(sort));
+        PersistSettings();
+        OnPropertyChanged(nameof(Projects));
+    }
+
+    public void ResetProjectSidebarOrganization()
+    {
+        Host.Settings.Set("agent.projectSidebarGrouping", JsonValue.String("folder"));
+        Host.Settings.Set("agent.projectSidebarSort", JsonValue.String("recent"));
+        PersistSettings();
+        OnPropertyChanged(nameof(Projects));
+    }
 
     /// Same setting key and values as macOS. Its "manual" order needs
     /// drag-reorder, which these platforms do not have, so it reads as last update.
@@ -1215,16 +1289,67 @@ public sealed partial class AppModel : ObservableObject
 
     public void AddDraftAttachments(IEnumerable<string> paths)
     {
+        AppendDraftAttachments(PrepareDraftAttachments(paths.ToArray()));
+    }
+
+    public async Task AddDraftAttachmentsAsync(IEnumerable<string> paths)
+    {
+        var requestedPaths = paths.ToArray();
+        if (requestedPaths.Length == 0) return;
+        var additions = await Task.Run(() => PrepareDraftAttachments(requestedPaths));
+        AppendDraftAttachments(additions);
+    }
+
+    public async Task<bool> AddDraftImageDataAsync(byte[] imageData, string imageExtension = "png")
+    {
+        if (imageData.Length == 0) return false;
+        var extension = NormalizeDraftImageExtension(imageExtension);
+        try
+        {
+            var path = await Task.Run(() =>
+            {
+                var directory = Path.Combine(Paths.Runtime, "pasted-images");
+                Directory.CreateDirectory(directory);
+                var imagePath = Path.Combine(directory, $"{Guid.NewGuid():N}.{extension}");
+                File.WriteAllBytes(imagePath, imageData);
+                return imagePath;
+            });
+            await AddDraftAttachmentsAsync([path]);
+            return true;
+        }
+        catch (Exception error)
+        {
+            Debug.WriteLine($"Unable to save dropped image: {error.Message}");
+            return false;
+        }
+    }
+
+    private static List<ChatAttachment> PrepareDraftAttachments(IEnumerable<string> paths)
+    {
+        var additions = new List<ChatAttachment>();
+        foreach (var path in paths)
+        {
+            if (ChatAttachment.TryCreate(path, out var attachment)) additions.Add(attachment);
+        }
+        return additions;
+    }
+
+    private void AppendDraftAttachments(IEnumerable<ChatAttachment> additions)
+    {
         var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
         var knownPaths = new HashSet<string>(DraftAttachments.Select(item => item.FilePath), pathComparer);
-        var additions = new List<ChatAttachment>();
-        foreach (var path in paths.ToArray())
+        foreach (var attachment in additions)
         {
-            if (!ChatAttachment.TryCreate(path, out var attachment) || !knownPaths.Add(attachment.FilePath)) continue;
-            additions.Add(attachment);
+            if (knownPaths.Add(attachment.FilePath)) DraftAttachments.Add(attachment);
         }
+    }
 
-        foreach (var attachment in additions) DraftAttachments.Add(attachment);
+    private static string NormalizeDraftImageExtension(string extension)
+    {
+        var value = extension.Trim().TrimStart('.').ToLowerInvariant();
+        return value is "png" or "jpg" or "jpeg" or "gif" or "webp" or "bmp" or "tif" or "tiff" or "heic" or "heif" or "avif"
+            ? value
+            : "png";
     }
 
     public void RemoveDraftAttachment(ChatAttachment attachment) => DraftAttachments.Remove(attachment);
@@ -1718,19 +1843,33 @@ public sealed partial class AppModel : ObservableObject
 
     public bool AiTransferAllowed => Legal.AiTransferAllowed;
 
-    public void SetWorkspace(string value, bool addToProjects = true)
+    public void SetWorkspace(string value, bool addToProjects = true) => _ = SetWorkspaceAsync(value, addToProjects);
+
+    public Task SetWorkspaceAsync(string value, bool addToProjects = true)
     {
         var normalized = NormalizeCodingWorkspace(value);
         if (ActiveSandbox is not null && !_sandboxTransition && !SameWorkspacePath(normalized, ActiveSandbox.Path))
         {
             SandboxNotice = "Leave the active sandbox before changing workspaces.";
-            return;
+            return Task.CompletedTask;
         }
         WorkspacePath = normalized;
-        if (addToProjects && !string.IsNullOrWhiteSpace(normalized)
-            && !Projects.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+        if (addToProjects && !string.IsNullOrWhiteSpace(normalized))
         {
-            Projects.Insert(0, normalized);
+            var existingProject = Projects.FirstOrDefault(path => SameWorkspacePath(path, normalized));
+            if (existingProject is null)
+            {
+                Projects.Insert(0, normalized);
+            }
+            else
+            {
+                var existingIndex = Projects.IndexOf(existingProject);
+                if (existingIndex > 0)
+                {
+                    Projects.RemoveAt(existingIndex);
+                    Projects.Insert(0, normalized);
+                }
+            }
         }
         PersistProjects();
         RemoteControl.SetWorkspacePath(normalized);
@@ -1739,9 +1878,19 @@ public sealed partial class AppModel : ObservableObject
         Host.Settings.Set("agent.workspace", JsonValue.String(normalized));
         PersistSettings();
         Bridge.PrepareWorkspaceSelection(normalized);
-        _ = Bridge.StartAsync(normalized);
+        var workspaceLoad = Bridge.StartAsync(normalized);
         OnPropertyChanged(nameof(Projects));
         RefreshProjectAvailability();
+        return workspaceLoad;
+    }
+
+    public void SelectNoProject() => _ = SelectNoProjectAsync();
+
+    public async Task SelectNoProjectAsync()
+    {
+        await SetWorkspaceAsync("");
+        if (!string.IsNullOrWhiteSpace(WorkspacePath) || Bridge.RemoteTarget is not null) return;
+        if (Bridge.Selected is null) await Bridge.NewProjectlessConversationAsync();
     }
 
     public void RefreshSshHosts()

@@ -761,6 +761,27 @@
   <data name="studio.template.announcement" xml:space="preserve"><value>Announcement</value></data>
   <data name="studio.template.story" xml:space="preserve"><value>Story</value></data>
   <data name="studio.template.thumbnail" xml:space="preserve"><value>Video thumbnail</value></data>
+  <data name="studio.template.youtube" xml:space="preserve"><value>YouTube cover</value></data>
+  <data name="studio.crop" xml:space="preserve"><value>Crop image</value></data>
+  <data name="studio.crop.free" xml:space="preserve"><value>Free</value></data>
+  <data name="studio.tool.marker" xml:space="preserve"><value>Highlighter</value></data>
+  <data name="studio.video.trimExport" xml:space="preserve"><value>Trim and add to project</value></data>
+  <data name="studio.video.trimUnavailable" xml:space="preserve"><value>This video cannot be exported with the available codec.</value></data>
+  <data name="studio.video.trimFailed" xml:space="preserve"><value>Video export failed.</value></data>
+  <data name="studio.video.sourceMissing" xml:space="preserve"><value>The source video could not be found.</value></data>
+  <data name="studio.video.ffmpegMissing" xml:space="preserve"><value>Install FFmpeg and restart the app to trim video on Windows or Linux.</value></data>
+  <data name="studio.video.loading" xml:space="preserve"><value>Loading video…</value></data>
+  <data name="studio.video.playerUnavailable" xml:space="preserve"><value>This video format is not supported by the local player.</value></data>
+  <data name="studio.video.ready" xml:space="preserve"><value>Use the In and Out points, then export the new clip.</value></data>
+  <data name="studio.video.enterRange" xml:space="preserve"><value>Enter In and Out time in seconds, then export the new clip.</value></data>
+  <data name="studio.video.trimRangeInvalid" xml:space="preserve"><value>Enter an Out time after the In time.</value></data>
+  <data name="studio.video.exporting" xml:space="preserve"><value>Encoding the trimmed video…</value></data>
+  <data name="studio.video.trimAdded" xml:space="preserve"><value>Trimmed clip added to this project.</value></data>
+  <data name="studio.video.trimCancelled" xml:space="preserve"><value>Video export cancelled.</value></data>
+  <data name="studio.video.markIn" xml:space="preserve"><value>Set In</value></data>
+  <data name="studio.video.markOut" xml:space="preserve"><value>Set Out</value></data>
+  <data name="studio.video.play" xml:space="preserve"><value>Play</value></data>
+  <data name="studio.video.pause" xml:space="preserve"><value>Pause</value></data>
   <data name="studio.template.slide" xml:space="preserve"><value>Title slide</value></data>
   <data name="studio.template.logo" xml:space="preserve"><value>Logo</value></data>
   <data name="studio.template.mobile" xml:space="preserve"><value>Mobile screen</value></data>
@@ -1019,6 +1040,28 @@
   <data name="library.add" xml:space="preserve"><value>Add files</value></data>
   <data name="library.addFailed" xml:space="preserve"><value>{0} files could not be added.</value></data>
   <data name="library.open" xml:space="preserve"><value>Open</value></data>
+  <data name="library.favorite" xml:space="preserve"><value>Favorite</value></data>
+  <data name="library.unfavorite" xml:space="preserve"><value>Remove from favorites</value></data>
+  <data name="library.favorites" xml:space="preserve"><value>Favorites</value></data>
+  <data name="library.showAll" xml:space="preserve"><value>Show all</value></data>
+  <data name="library.unfiled" xml:space="preserve"><value>Unfiled</value></data>
+  <data name="library.allFolders" xml:space="preserve"><value>All folders</value></data>
+  <data name="library.folderFilter" xml:space="preserve"><value>Folder</value></data>
+  <data name="library.sortNewest" xml:space="preserve"><value>Newest first</value></data>
+  <data name="library.sortOldest" xml:space="preserve"><value>Oldest first</value></data>
+  <data name="library.exportSelected" xml:space="preserve"><value>Export selected</value></data>
+  <data name="library.select" xml:space="preserve"><value>Select</value></data>
+  <data name="library.deselect" xml:space="preserve"><value>Deselect</value></data>
+  <data name="library.selectAll" xml:space="preserve"><value>Select all</value></data>
+  <data name="library.deselectAll" xml:space="preserve"><value>Clear selection</value></data>
+  <data name="library.selectHelp" xml:space="preserve"><value>Select items to export</value></data>
+  <data name="library.organize" xml:space="preserve"><value>Organize</value></data>
+  <data name="library.folderAndTags" xml:space="preserve"><value>Folder | comma-separated tags</value></data>
+  <data name="library.folder" xml:space="preserve"><value>Folder</value></data>
+  <data name="library.tags" xml:space="preserve"><value>Tags</value></data>
+  <data name="library.ocrLocal" xml:space="preserve"><value>Recognize text on this device</value></data>
+  <data name="library.ocrRunning" xml:space="preserve"><value>Recognizing…</value></data>
+  <data name="library.ocrUnavailable" xml:space="preserve"><value>Install Tesseract OCR and add it to PATH to recognize text locally.</value></data>
   <data name="library.empty.title" xml:space="preserve"><value>Nothing here yet</value></data>
   <data name="library.empty.detail" xml:space="preserve"><value>Images, videos, speech and music you generate are filed here on their own. Add documents and other files yourself.</value></data>
   <data name="backgroundTasks.title" xml:space="preserve"><value>Background tasks</value></data>

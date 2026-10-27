@@ -76,15 +76,17 @@
                     <Button x:Name="ProjectsToggle" DockPanel.Dock="Left" Content="⌄  Projects"
                             Padding="0" Click="OnToggleProjects" Background="Transparent" BorderThickness="0"
                             Foreground="{DynamicResource TextSecondary}"/>
+                    <Button x:Name="ProjectsOptionsButton" DockPanel.Dock="Right" Content="⋯" Width="22" Height="20"
+                            Padding="0" Click="OnProjectOptions" ToolTip="Organize projects"/>
                     <Button x:Name="NewProjectButton" DockPanel.Dock="Right" Content="+" Width="22" Height="20"
                             Padding="0" Click="OnNewProject" ToolTip="Add project"/>
                 </DockPanel>
                 <StackPanel x:Name="ProjectsPanel" Margin="12,0,12,8">
-                    <ListBox x:Name="ProjectList" Height="86" BorderThickness="0" Background="Transparent"
+                    <ListBox x:Name="ProjectList" Height="Auto" MinHeight="0" MaxHeight="240" BorderThickness="0" Background="Transparent"
                              SelectionChanged="OnProjectSelected">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Title}" Opacity="{Binding Opacity}" TextTrimming="CharacterEllipsis"
+                                <TextBlock Text="{Binding DisplayTitle}" Opacity="{Binding Opacity}" TextTrimming="CharacterEllipsis"
                                            Foreground="{DynamicResource TextPrimary}" Margin="4,3"/>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

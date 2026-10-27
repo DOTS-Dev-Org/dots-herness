@@ -2,6 +2,7 @@
 // Media editor side panels: the layer tree on the left and the design inspector on the right.
 
 import AppKit
+import AVKit
 import SwiftUI
 import DotsHarnessCore
 
@@ -385,6 +386,18 @@ struct MediaInspector: View {
                     .textFieldStyle(.roundedBorder)
             }
         case .image:
+            section(AppCopy.text("studio.crop")) {
+                HStack(spacing: 5) {
+                    cropPresetButton("studio.crop.free", ratio: nil, layer: layer, canvas: canvas)
+                    cropPresetButton("studio.crop.square", ratio: 1, layer: layer, canvas: canvas)
+                    cropPresetButton("studio.crop.landscape", ratio: 16.0 / 9.0, layer: layer, canvas: canvas)
+                    cropPresetButton("studio.crop.portrait", ratio: 9.0 / 16.0, layer: layer, canvas: canvas)
+                }
+                cropSlider("X", layer: layer, canvas: canvas, keyPath: \.cropX, range: 0...max(0.001, 1 - (layer.cropWidth ?? 1)))
+                cropSlider("Y", layer: layer, canvas: canvas, keyPath: \.cropY, range: 0...max(0.001, 1 - (layer.cropHeight ?? 1)))
+                cropSlider("W", layer: layer, canvas: canvas, keyPath: \.cropWidth, range: 0.05...max(0.05, 1 - (layer.cropX ?? 0)))
+                cropSlider("H", layer: layer, canvas: canvas, keyPath: \.cropHeight, range: 0.05...max(0.05, 1 - (layer.cropY ?? 0)))
+            }
             section(AppCopy.text("studio.ai.kind.image")) {
                 TextField(
                     AppCopy.text("studio.imagePrompt"),
@@ -409,7 +422,7 @@ struct MediaInspector: View {
         case .video:
             if let name = layer.assetName {
                 section(AppCopy.text("studio.ai.kind.video")) {
-                    Button(AppCopy.text("studio.playVideo")) { NSWorkspace.shared.open(state.assetURL(name)) }
+                    MediaVideoTrimControls(state: state, layer: layer, canvasID: canvas.id, url: state.assetURL(name))
                 }
             }
         }
@@ -590,6 +603,67 @@ struct MediaInspector: View {
         }
     }
 
+    private func cropSlider(
+        _ label: String,
+        layer: MediaLayer,
+        canvas: MediaCanvas,
+        keyPath: WritableKeyPath<MediaLayer, Double?>,
+        range: ClosedRange<Double>
+    ) -> some View {
+        HStack(spacing: 6) {
+            Text(label).font(.caption).foregroundStyle(.secondary).frame(width: 16, alignment: .leading)
+            Slider(value: cropBinding(layer, canvas, keyPath, defaultValue: label == "W" || label == "H" ? 1 : 0), in: range, onEditingChanged: { editing in
+                if editing { state.checkpoint() } else { state.commit() }
+            })
+            Text("\(Int(((layer[keyPath: keyPath] ?? (label == "W" || label == "H" ? 1 : 0)) * 100).rounded()))%")
+                .font(.caption.monospacedDigit()).frame(width: 36, alignment: .trailing)
+        }
+    }
+
+    private func cropBinding(_ layer: MediaLayer, _ canvas: MediaCanvas, _ keyPath: WritableKeyPath<MediaLayer, Double?>, defaultValue: Double) -> Binding<Double> {
+        Binding(
+            get: { state.layer?[keyPath: keyPath] ?? layer[keyPath: keyPath] ?? defaultValue },
+            set: { value in
+                state.updateLayer(layer.id, in: canvas.id) { current in
+                    current[keyPath: keyPath] = value
+                    let x = min(max(current.cropX ?? 0, 0), 0.999)
+                    let y = min(max(current.cropY ?? 0, 0), 0.999)
+                    current.cropX = x; current.cropY = y
+                    current.cropWidth = min(max(current.cropWidth ?? 1, 0.05), 1 - x)
+                    current.cropHeight = min(max(current.cropHeight ?? 1, 0.05), 1 - y)
+                }
+                state.commit()
+            }
+        )
+    }
+
+    private func cropPresetButton(_ key: String, ratio: Double?, layer: MediaLayer, canvas: MediaCanvas) -> some View {
+        Button(AppCopy.text(key)) {
+            state.checkpoint()
+            state.updateLayer(layer.id, in: canvas.id) { current in
+                guard let ratio else {
+                    current.cropX = nil; current.cropY = nil; current.cropWidth = nil; current.cropHeight = nil
+                    return
+                }
+                let sourceAspect: Double
+                if let name = current.assetName,
+                   let image = ImageFileCache.image(at: state.assetURL(name)),
+                   let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                    sourceAspect = Double(cgImage.width) / Double(max(cgImage.height, 1))
+                } else { sourceAspect = ratio }
+                let normalizedAspect = ratio / max(sourceAspect, 0.001)
+                let width = normalizedAspect >= 1 ? 1 : normalizedAspect
+                let height = normalizedAspect >= 1 ? 1 / normalizedAspect : 1
+                current.cropX = (1 - width) / 2; current.cropY = (1 - height) / 2
+                current.cropWidth = width; current.cropHeight = height
+            }
+            state.commit()
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.mini)
+        .disabled(layer.assetName == nil && ratio != nil)
+    }
+
     /// Continuous controls (sliders, colour wells, typing) pass `undoable: false`
     /// so one gesture does not flood the undo history.
     private func bind<Value>(
@@ -623,5 +697,136 @@ struct MediaInspector: View {
                 state.commit()
             }
         )
+    }
+}
+
+/// Native player and non-destructive In/Out export for a selected video layer.
+private struct MediaVideoTrimControls: View {
+    @ObservedObject var state: MediaEditorState
+    let layer: MediaLayer
+    let canvasID: String
+    let url: URL
+    @State private var player: AVPlayer?
+    @State private var duration = 0.0
+    @State private var playhead = 0.0
+    @State private var inPoint = 0.0
+    @State private var outPoint = 0.0
+    @State private var exporting = false
+    @State private var progress: Float = 0
+    @State private var exportSession: AVAssetExportSession?
+    @State private var error: String?
+
+    private let frameStep = 1.0 / 30.0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let player { VideoPlayer(player: player).frame(height: 150).clipShape(RoundedRectangle(cornerRadius: 8)) }
+            if duration > 0 {
+                HStack {
+                    Button { seek(to: max(0, playhead - frameStep)) } label: { Image(systemName: "backward.frame") }
+                    Slider(value: $playhead, in: 0...duration).onChange(of: playhead) { _, value in seek(to: value) }
+                    Button { seek(to: min(duration, playhead + frameStep)) } label: { Image(systemName: "forward.frame") }
+                }
+                Text("\(time(inPoint))  —  \(time(outPoint))  /  \(time(duration))")
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text("In").font(.caption).frame(width: 20)
+                    Slider(value: $inPoint, in: 0...max(0.001, outPoint - frameStep))
+                        .onChange(of: inPoint) { _, value in if value >= outPoint { outPoint = min(duration, value + frameStep) } }
+                }
+                HStack(spacing: 6) {
+                    Text("Out").font(.caption).frame(width: 20)
+                    Slider(value: $outPoint, in: min(duration, inPoint + frameStep)...max(duration, inPoint + frameStep))
+                        .onChange(of: outPoint) { _, value in if value <= inPoint { inPoint = max(0, value - frameStep) } }
+                }
+                if exporting {
+                    ProgressView(value: Double(progress))
+                    Button(AppCopy.text("common.cancel"), role: .cancel) { exportSession?.cancelExport() }
+                } else {
+                    Button(AppCopy.text("studio.video.trimExport"), action: exportTrim)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(outPoint - inPoint < frameStep)
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .task(id: url) {
+            player?.pause()
+            player = AVPlayer(url: url)
+            let asset = AVURLAsset(url: url)
+            if let time = try? await asset.load(.duration) {
+                let loaded = CMTimeGetSeconds(time)
+                if loaded.isFinite && loaded > 0 { duration = loaded; outPoint = loaded }
+            }
+        }
+        .onDisappear { player?.pause(); exportSession?.cancelExport() }
+        .alert(AppCopy.text("media.generationFailed"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(AppCopy.text("common.done"), role: .cancel) { error = nil }
+        } message: { Text(error ?? "") }
+    }
+
+    private func seek(to seconds: Double) {
+        playhead = seconds
+        player?.seek(to: CMTime(seconds: seconds, preferredTimescale: 60), toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    private func time(_ seconds: Double) -> String {
+        let frames = Int((seconds * 30).rounded())
+        return String(format: "%02d:%02d:%02d", frames / 1800, (frames / 30) % 60, frames % 30)
+    }
+
+    private func exportTrim() {
+        guard outPoint > inPoint else {
+            error = AppCopy.text("studio.video.trimUnavailable")
+            return
+        }
+        let source = AVURLAsset(url: url)
+        guard let session = AVAssetExportSession(asset: source, presetName: AVAssetExportPresetHighestQuality) else {
+            error = AppCopy.text("studio.video.trimUnavailable")
+            return
+        }
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("herness-trim-\(UUID().uuidString).mp4")
+        session.outputURL = output
+        session.outputFileType = .mp4
+        session.shouldOptimizeForNetworkUse = true
+        session.timeRange = CMTimeRange(
+            start: CMTime(seconds: inPoint, preferredTimescale: 600),
+            duration: CMTime(seconds: outPoint - inPoint, preferredTimescale: 600)
+        )
+        exportSession = session
+        exporting = true
+        progress = 0
+        Task { @MainActor in
+            let watcher = Task { @MainActor in
+                while session.status == .waiting || session.status == .exporting {
+                    progress = session.progress
+                    try? await Task.sleep(for: .milliseconds(120))
+                }
+            }
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                session.exportAsynchronously { continuation.resume() }
+            }
+            watcher.cancel()
+            exporting = false
+            guard session.status == .completed else {
+                try? FileManager.default.removeItem(at: output)
+                error = session.error?.localizedDescription ?? AppCopy.text("studio.video.trimFailed")
+                return
+            }
+            do {
+                let name = try state.store.importAsset(from: output, into: state.project.id)
+                state.checkpoint()
+                state.updateLayer(layer.id, in: canvasID) { $0.assetName = name }
+                state.commit()
+                player?.pause()
+                player = AVPlayer(url: state.assetURL(name))
+                duration = outPoint - inPoint
+                inPoint = 0
+                outPoint = duration
+                playhead = 0
+            } catch { self.error = error.localizedDescription }
+            try? FileManager.default.removeItem(at: output)
+        }
     }
 }

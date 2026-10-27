@@ -16,7 +16,7 @@ extension WorkspaceMemory {
 
     /// Settled project decisions are project facts too; the repository's Git history records who changed them.
     public func recordProjectDecision(summary: String) throws {
-        let text = sanitize(summary, limit: 240)
+        let text = sanitizeSentence(summary, limit: Self.decisionLimit)
         guard !text.isEmpty else { return }
         let key = "decision-" + String(digest(Data(text.utf8)).prefix(12))
         try setProjectMemoryFact(kind: "decision", key: key, text: text)

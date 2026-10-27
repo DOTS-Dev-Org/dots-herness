@@ -81,6 +81,15 @@ public enum PlanStepsTool {
         return []
     }
 
+    /// Sent once when a turn tries to end while its plan still has open steps; nil when none are open.
+    public static func unfinishedReminder(in messages: [ChatMessage]) -> String? {
+        let open = currentSteps(in: messages).filter { $0.status != "done" }
+        guard !open.isEmpty else { return nil }
+        return "Your plan still has unfinished steps:\n"
+            + open.map { "- \($0.title)" }.joined(separator: "\n")
+            + "\nContinue and complete them now. If a step truly cannot be done here, call update_plan to mark what is done, then say plainly which steps remain and why. Finish with your full answer to the user."
+    }
+
     static func steps(in output: String) -> [Step] {
         output.split(separator: "\n").compactMap { line in
             let status = ["pending", "in_progress", "done"].first { line.hasPrefix(marker(for: $0)! + " ") }

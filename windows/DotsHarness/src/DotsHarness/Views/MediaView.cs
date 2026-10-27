@@ -30,9 +30,15 @@ internal sealed class MediaView : UserControl, ISectionView
     private string _category = "social";
     private bool _sortByName;
     private string? _libraryKind;
+    private string? _libraryFolder;
+    private bool _libraryFavoritesOnly;
+    private bool _libraryNewestFirst = true;
+    private readonly HashSet<string> _selectedLibraryItems = [];
     private string _pendingPrompt = "";
     private string? _notice;
     private readonly HashSet<string> _starred;
+    private IReadOnlyList<MediaTemplate> _templates = [];
+    private bool _templateCatalogLoading;
 
     public MediaView(AppModel model)
     {
@@ -64,6 +70,7 @@ internal sealed class MediaView : UserControl, ISectionView
         _store.LoadIfNeeded();
         _music.LoadIfNeeded();
         Render();
+        if (_tab == "templates") RefreshTemplateCatalog();
     }
 
     private void RenderIfHome()
@@ -126,6 +133,7 @@ internal sealed class MediaView : UserControl, ISectionView
                 _tab = tab;
                 _model.Host.Settings.Set("media.home.tab", HarnessPluginKit.JsonValue.String(tab));
                 Render();
+                if (tab == "templates") RefreshTemplateCatalog();
             }));
         }
         _sidebar.Children.Add(new Separator { Margin = new Thickness(0, 8, 0, 8) });
@@ -194,7 +202,7 @@ internal sealed class MediaView : UserControl, ISectionView
         var cards = new WrapPanel { Margin = new Thickness(28, 0, 16, 28) };
         if (_tab == "templates")
         {
-            foreach (var template in MediaTemplate.All.Where(t => t.Category == _category && Matches(t.Title)))
+            foreach (var template in _templates.Where(t => t.Category == _category && Matches(t.Title)))
             {
                 var canvas = template.Canvas();
                 cards.Children.Add(Card(canvas, "", template.Title, $"{(int)canvas.Width} × {(int)canvas.Height}",
@@ -223,6 +231,30 @@ internal sealed class MediaView : UserControl, ISectionView
         }
         content.Children.Add(cards);
         return Page(_model.L("rail.media"), Ui.Button("+ " + _model.L("studio.newProject"), NewProject), content);
+    }
+
+    private void RefreshTemplateCatalog()
+    {
+        if (_templateCatalogLoading) return;
+        _templateCatalogLoading = true;
+        _ = RefreshTemplateCatalogAsync();
+    }
+
+    private async Task RefreshTemplateCatalogAsync()
+    {
+        IReadOnlyList<MediaTemplate> templates;
+        try
+        {
+            var cachePath = Path.Combine(_model.Paths.Root, "media-studio", "template-catalog.json");
+            templates = await MediaTemplateCatalogClient.LoadAsync(cachePath, _model.Localization.Culture.TwoLetterISOLanguageName);
+        }
+        catch { templates = []; }
+        Dispatcher.BeginInvoke(() =>
+        {
+            _templates = templates;
+            _templateCatalogLoading = false;
+            if (_tab == "templates") RenderBody();
+        });
     }
 
     private void ToggleButtonLike(WrapPanel filters)
@@ -353,8 +385,28 @@ internal sealed class MediaView : UserControl, ISectionView
             kinds.Children.Add(chip);
         }
         content.Children.Add(kinds);
+        var organization = new WrapPanel { Margin = new Thickness(28, 0, 28, 12) };
+        var favorites = Ui.Button(_model.L(_libraryFavoritesOnly ? "library.showAll" : "library.favorites"), () => { _libraryFavoritesOnly = !_libraryFavoritesOnly; RenderBody(); });
+        if (_libraryFavoritesOnly) favorites.Background = new SolidColorBrush(Color.FromArgb(0x50, 0x3B, 0x82, 0xF6));
+        organization.Children.Add(favorites);
+        foreach (var folder in MediaLibrary.Items(_model.Paths.Root).Select(item => item.Folder).Distinct(StringComparer.CurrentCultureIgnoreCase).OrderBy(value => value))
+        {
+            var value = folder;
+            var label = string.IsNullOrWhiteSpace(value) ? _model.L("library.unfiled") : value;
+            var chip = Ui.Button(label, () => { _libraryFolder = _libraryFolder == value ? null : value; RenderBody(); });
+            if (_libraryFolder == value) chip.Background = new SolidColorBrush(Color.FromArgb(0x50, 0x3B, 0x82, 0xF6));
+            organization.Children.Add(chip);
+        }
+        organization.Children.Add(Ui.Button(_model.L(_libraryNewestFirst ? "library.sortNewest" : "library.sortOldest"), () => { _libraryNewestFirst = !_libraryNewestFirst; RenderBody(); }));
+        organization.Children.Add(Ui.Button(_model.L(_selectedLibraryItems.Count > 0 ? "library.exportSelected" : "library.selectHelp"), ExportSelected, primary: _selectedLibraryItems.Count > 0));
+        if (_selectedLibraryItems.Count > 0) organization.Children.Add(Ui.Text(_selectedLibraryItems.Count.ToString(), 12, secondary: true));
+        content.Children.Add(organization);
         var items = MediaLibrary.Items(_model.Paths.Root)
-            .Where(i => (_libraryKind is null || i.Kind == _libraryKind) && Matches(i.DisplayTitle)).ToList();
+            .Where(i => (_libraryKind is null || i.Kind == _libraryKind)
+                && (!_libraryFavoritesOnly || i.Favorite)
+                && (_libraryFolder is null || i.Folder == _libraryFolder)
+                && (_query.Text.Length == 0 || string.Join(" ", i.DisplayTitle, i.Title, i.Folder, i.OcrText, string.Join(" ", i.Tags)).Contains(_query.Text, StringComparison.CurrentCultureIgnoreCase))).ToList();
+        items = (_libraryNewestFirst ? items.OrderByDescending(i => i.CreatedAt) : items.OrderBy(i => i.CreatedAt)).ToList();
         if (items.Count == 0)
         {
             var empty = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 50, 0, 0) };
@@ -375,12 +427,20 @@ internal sealed class MediaView : UserControl, ISectionView
             var texts = new StackPanel { Margin = new Thickness(12, 8, 12, 10) };
             texts.Children.Add(Ui.Text(item.DisplayTitle, bold: true));
             texts.Children.Add(Ui.Text($"{_model.L($"library.kind.{item.Kind}")} · {Ui.Relative(item.CreatedAt)}", 11, secondary: true));
+            if (!string.IsNullOrWhiteSpace(item.Folder) || item.Tags.Count > 0) texts.Children.Add(Ui.Text($"{item.Folder} {string.Join(" · ", item.Tags.Select(tag => "#" + tag))}".Trim(), 10, secondary: true));
+            var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            controls.Children.Add(Ui.Button(item.Favorite ? "★" : "☆", () => MediaLibrary.Update(item.Id, _model.Paths.Root, value => value.Favorite = !value.Favorite), _model.L("library.favorite")));
+            var selected = new CheckBox { Content = _model.L("library.select"), IsChecked = _selectedLibraryItems.Contains(item.Id), VerticalAlignment = VerticalAlignment.Center };
+            selected.Checked += (_, _) => { _selectedLibraryItems.Add(item.Id); RenderBody(); };
+            selected.Unchecked += (_, _) => { _selectedLibraryItems.Remove(item.Id); RenderBody(); };
+            controls.Children.Add(selected);
+            texts.Children.Add(controls);
             stack.Children.Add(texts);
             var card = Ui.Card(stack, 0);
             card.Margin = new Thickness(0, 0, 16, 16);
             card.ToolTip = item.Title;
             card.Cursor = Cursors.Hand;
-            card.MouseLeftButtonUp += (_, _) => { if (exists) Ui.Open(item.Path); };
+            card.MouseLeftButtonUp += (_, e) => { if (e.OriginalSource is not (Button or CheckBox) && exists) Ui.Open(item.Path); };
             var menu = new ContextMenu();
             var open = new MenuItem { Header = _model.L("library.open"), IsEnabled = exists };
             open.Click += (_, _) => Ui.Open(item.Path);
@@ -388,9 +448,39 @@ internal sealed class MediaView : UserControl, ISectionView
             reveal.Click += (_, _) => Ui.Reveal(item.Path);
             var remove = new MenuItem { Header = _model.L("common.remove") };
             remove.Click += (_, _) => MediaLibrary.Remove(item.Id, _model.Paths.Root);
+            var organize = new MenuItem { Header = _model.L("library.organize") };
+            organize.Click += async (_, _) =>
+            {
+                var current = $"{item.Folder} | {string.Join(", ", item.Tags)}";
+                if (await Ui.Prompt(Window.GetWindow(this), _model.L("library.folderAndTags"), current) is not { } value) return;
+                var parts = value.Split('|', 2);
+                MediaLibrary.Update(item.Id, _model.Paths.Root, entry =>
+                {
+                    entry.Folder = parts[0].Trim();
+                    entry.Tags = parts.Length < 2 ? [] : parts[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+                });
+            };
+            var selectItem = new MenuItem { Header = _model.L(_selectedLibraryItems.Contains(item.Id) ? "library.deselect" : "library.select") };
+            selectItem.Click += (_, _) => { if (!_selectedLibraryItems.Add(item.Id)) _selectedLibraryItems.Remove(item.Id); RenderBody(); };
+            if (item.Kind == "image")
+            {
+                var ocr = new MenuItem { Header = _model.L("library.ocrLocal"), IsEnabled = exists };
+                ocr.Click += async (_, _) =>
+                {
+                    try
+                    {
+                        var recognized = await MediaOcr.RecognizeLocallyAsync(item.Path);
+                        MediaLibrary.Update(item.Id, _model.Paths.Root, entry => entry.OcrText = recognized);
+                    }
+                    catch (Exception ex) { _notice = ex.Message; RenderBody(); }
+                };
+                menu.Items.Add(ocr);
+            }
             menu.Items.Add(open);
             menu.Items.Add(reveal);
             menu.Items.Add(new Separator());
+            menu.Items.Add(organize);
+            menu.Items.Add(selectItem);
             menu.Items.Add(remove);
             card.ContextMenu = menu;
             cards.Children.Add(card);
@@ -400,6 +490,19 @@ internal sealed class MediaView : UserControl, ISectionView
         page.AllowDrop = true;
         page.Drop += (_, e) => { if (e.Data.GetData(DataFormats.FileDrop) is string[] files) Add(files); };
         return page;
+    }
+
+    private void ExportSelected()
+    {
+        var picker = new Microsoft.Win32.OpenFolderDialog { Multiselect = false, Title = _model.L("library.exportSelected") };
+        if (picker.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            _ = MediaLibrary.Export(_selectedLibraryItems, picker.FolderName, _model.Paths.Root);
+            _selectedLibraryItems.Clear();
+            RenderBody();
+        }
+        catch (Exception ex) { _notice = ex.Message; RenderBody(); }
     }
 
     private void AddFiles()

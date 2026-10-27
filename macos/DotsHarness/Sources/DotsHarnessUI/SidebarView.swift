@@ -35,6 +35,8 @@ struct SidebarView: View {
     @State private var projectPendingRemoval: String?
     @State private var projectEditorTarget: ProjectEditorTarget?
     @State private var hoveredProjectTitlePath: String?
+    @AppStorage("sidebar.projectGrouping") private var projectGroupingRaw = ProjectSidebarGrouping.sections.rawValue
+    @AppStorage("sidebar.projectSort") private var projectSortRaw = ProjectSidebarSort.defaultOrder.rawValue
     /// Section header the cursor is over; its chevron and actions only show then.
     @State private var hoveredSectionTitle: String?
     @State private var projectPreviewPath: String?
@@ -415,6 +417,36 @@ struct SidebarView: View {
 
     @ViewBuilder
     private var sidebarOptionsMenu: some View {
+        Menu(AppCopy.text("sidebar.groupBy")) {
+            ForEach(ProjectSidebarGrouping.allCases, id: \.self) { grouping in
+                Button {
+                    projectGroupingRaw = grouping.rawValue
+                } label: {
+                    if currentProjectGrouping == grouping {
+                        Label(groupingTitle(grouping), systemImage: "checkmark")
+                    } else {
+                        Text(groupingTitle(grouping))
+                    }
+                }
+            }
+        }
+
+        Menu(AppCopy.text("sidebar.sortProjectsBy")) {
+            ForEach(ProjectSidebarSort.allCases, id: \.self) { sort in
+                Button {
+                    projectSortRaw = sort.rawValue
+                } label: {
+                    if currentProjectSort == sort {
+                        Label(sortTitle(sort), systemImage: "checkmark")
+                    } else {
+                        Text(sortTitle(sort))
+                    }
+                }
+            }
+        }
+
+        Divider()
+
         Menu(AppCopy.text("sidebar.editSidebarLayout")) {
             Button {
                 model.setSidebarLayoutMode(.groupedByProject)
@@ -436,31 +468,50 @@ struct SidebarView: View {
             }
         }
 
-        Menu(AppCopy.text("sidebar.sortCriteria")) {
-            ForEach([
-                ConversationSortOrder.priority,
-                .lastUpdate,
-                .manual,
-            ], id: \.self) { order in
-                Button {
-                    model.setSortOrder(order, forProject: model.workspacePath)
-                } label: {
-                    if model.sortOrder(forProject: model.workspacePath) == order {
-                        Label(sortOrderTitle(order), systemImage: "checkmark")
-                    } else {
-                        Text(sortOrderTitle(order))
-                    }
+        Button(AppCopy.text("sidebar.newSection"), systemImage: "plus") {
+            guard !model.workspacePath.isEmpty else { return }
+            promptForText(
+                title: AppCopy.text("sidebar.newSection"),
+                message: AppCopy.text("sidebar.newSectionMessage")
+            ) { value in
+                if let section = model.createProjectSection(named: value) {
+                    model.setProjectSection(section, for: model.workspacePath)
                 }
             }
         }
         .disabled(model.workspacePath.isEmpty)
+
+        Button(AppCopy.text("modelPicker.reset"), systemImage: "arrow.counterclockwise") {
+            projectGroupingRaw = ProjectSidebarGrouping.sections.rawValue
+            projectSortRaw = ProjectSidebarSort.defaultOrder.rawValue
+            model.setSidebarLayoutMode(.groupedByProject)
+        }
+
+        Button(AppCopy.text("sidebar.showMore"), systemImage: "ellipsis") {
+            model.revealAllOtherProjects()
+        }
     }
 
-    private func sortOrderTitle(_ order: ConversationSortOrder) -> String {
-        switch order {
-        case .priority: return AppCopy.text("sidebar.sortPriority")
-        case .lastUpdate: return AppCopy.text("sidebar.sortLastUpdate")
-        case .manual: return AppCopy.text("sidebar.sortManual")
+    private var currentProjectGrouping: ProjectSidebarGrouping {
+        ProjectSidebarGrouping(rawValue: projectGroupingRaw) ?? .sections
+    }
+
+    private var currentProjectSort: ProjectSidebarSort {
+        ProjectSidebarSort(rawValue: projectSortRaw) ?? .defaultOrder
+    }
+
+    private func groupingTitle(_ grouping: ProjectSidebarGrouping) -> String {
+        switch grouping {
+        case .sections: return AppCopy.text("sidebar.projectSection")
+        case .folder: return AppCopy.text("settings.folder")
+        case .none: return AppCopy.text("sidebar.projectGroupingNone")
+        }
+    }
+
+    private func sortTitle(_ sort: ProjectSidebarSort) -> String {
+        switch sort {
+        case .defaultOrder: return AppCopy.text("sidebar.projectSortDefault")
+        case .name: return AppCopy.text("studio.home.sort.name")
         }
     }
 
@@ -482,7 +533,7 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
             } else if model.sidebarLayoutMode == .singleList {
-                ForEach(model.projectPaths, id: \.self) { path in
+                ForEach(organizedProjectPaths, id: \.self) { path in
                     projectRow(path)
                 }
                 projectConversations(for: model.workspacePath)
@@ -580,7 +631,9 @@ struct SidebarView: View {
             }
         } label: {
             HStack(spacing: 5) {
-                Text(AppCopy.text("sidebar.other"))
+                Text(currentProjectGrouping == .none
+                    ? AppCopy.text("sidebar.showMore")
+                    : AppCopy.text("sidebar.other"))
                     .font(.system(size: 12, weight: .medium))
                 Image(systemName: "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
@@ -1068,37 +1121,55 @@ struct SidebarView: View {
         model.projectTitle(for: path)
     }
 
+    private var organizedProjectPaths: [String] {
+        let paths = model.projectPaths
+        guard currentProjectSort == .name else { return paths }
+        return paths.sorted {
+            projectName($0).localizedStandardCompare(projectName($1)) == .orderedAscending
+        }
+    }
+
     private var projectGroups: [ProjectGroup] {
-        let pinned = model.projectPaths.filter { model.isProjectPinned($0) }
-        var groups: [ProjectGroup] = []
-        if !pinned.isEmpty {
-            groups.append(ProjectGroup(
-                title: AppCopy.text("sidebar.pinned"),
-                paths: pinned,
-                kind: .pinned
-            ))
-        }
-
-        for section in model.projectSections {
-            let paths = model.projectPaths.filter {
-                !model.isProjectPinned($0) && model.projectSection(for: $0) == section
+        let paths = organizedProjectPaths
+        switch currentProjectGrouping {
+        case .folder:
+            return ProjectFolderGrouping.groups(for: paths)
+        case .none:
+            let pinned = paths.filter { model.isProjectPinned($0) }
+            let unpinned = paths.filter { !model.isProjectPinned($0) }
+            return [ProjectGroup(title: nil, paths: pinned + unpinned, kind: .other)]
+        case .sections:
+            let pinned = paths.filter { model.isProjectPinned($0) }
+            var groups: [ProjectGroup] = []
+            if !pinned.isEmpty {
+                groups.append(ProjectGroup(
+                    title: AppCopy.text("sidebar.pinned"),
+                    paths: pinned,
+                    kind: .pinned
+                ))
             }
-            if !paths.isEmpty {
-                groups.append(ProjectGroup(title: section, paths: paths, kind: .named))
-            }
-        }
 
-        let other = model.projectPaths.filter {
-            !model.isProjectPinned($0) && model.projectSection(for: $0) == nil
+            for section in model.projectSections {
+                let sectionPaths = paths.filter {
+                    !model.isProjectPinned($0) && model.projectSection(for: $0) == section
+                }
+                if !sectionPaths.isEmpty {
+                    groups.append(ProjectGroup(title: section, paths: sectionPaths, kind: .named))
+                }
+            }
+
+            let other = paths.filter {
+                !model.isProjectPinned($0) && model.projectSection(for: $0) == nil
+            }
+            if !other.isEmpty {
+                groups.append(ProjectGroup(
+                    title: AppCopy.text("sidebar.other"),
+                    paths: other,
+                    kind: .other
+                ))
+            }
+            return groups
         }
-        if !other.isEmpty {
-            groups.append(ProjectGroup(
-                title: AppCopy.text("sidebar.other"),
-                paths: other,
-                kind: .other
-            ))
-        }
-        return groups
     }
 
     @ViewBuilder

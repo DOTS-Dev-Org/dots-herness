@@ -27,6 +27,43 @@ final class MultiAccountRoutingTests: XCTestCase {
         )
     }
 
+    // MARK: - quotas without a usage endpoint
+
+    @MainActor
+    func testCodeAssistModelShareDecidesThatModel() {
+        let router = RouterController(baseURL: "http://127.0.0.1:1")
+        let accounts = [account("a"), account("b", priority: 1)]
+        let usage: [String: AccountUsageSnapshot] = [
+            "a": .init(remainingFraction: 0.9, models: ["gemini-pro": 0.05, "gemini-flash": 0.9]),
+            "b": .init(remainingFraction: 0.4, models: ["gemini-pro": 0.4]),
+        ]
+        XCTAssertEqual(router.orderedRoutes(accounts, model: "gemini-pro", preferred: nil, usage: usage, now: Date()).map(\.id), ["b", "a"])
+        XCTAssertEqual(router.orderedRoutes(accounts, model: "gemini-flash", preferred: nil, usage: usage, now: Date()).map(\.id), ["a", "b"])
+    }
+
+    func testCodeAssistQuotaParsesBothShapes() {
+        let gemini = RouterController.codeAssistQuota(Data("""
+        {"buckets":[{"modelId":"gemini-pro","remainingFraction":0.25,"resetTime":"2026-10-28T00:00:00Z"},
+                    {"modelId":"gemini-flash","remainingFraction":1}]}
+        """.utf8))
+        XCTAssertEqual(gemini.models, ["gemini-pro": 0.25, "gemini-flash": 1])
+        XCTAssertEqual(gemini.remainingFraction, 1)
+        XCTAssertNotNil(gemini.resetsAt)
+        let antigravity = RouterController.codeAssistQuota(Data("""
+        {"models":{"claude-x":{"quotaInfo":{"resetTime":"2026-10-28T00:00:00.5Z"}},"gem":{"quotaInfo":{"remainingFraction":0.5}}}}
+        """.utf8))
+        XCTAssertEqual(antigravity.models, ["claude-x": 0, "gem": 0.5])
+    }
+
+    func testRateLimitHeadersGiveTighterShare() {
+        let response = HTTPURLResponse(url: URL(string: "https://x.test")!, statusCode: 200, httpVersion: nil, headerFields: [
+            "x-ratelimit-remaining-requests": "90", "x-ratelimit-limit-requests": "100",
+            "x-ratelimit-remaining-tokens": "2000", "x-ratelimit-limit-tokens": "10000",
+        ])
+        XCTAssertEqual(NativeAgentError.rateLimitRemaining(from: response), 0.2)
+        XCTAssertNil(NativeAgentError.rateLimitRemaining(from: HTTPURLResponse(url: URL(string: "https://x.test")!, statusCode: 200, httpVersion: nil, headerFields: [:])))
+    }
+
     // MARK: - orderedRoutes
 
     @MainActor

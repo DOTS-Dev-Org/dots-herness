@@ -189,6 +189,8 @@ extension AppModel {
 
     public func selectNoProject() {
         setWorkspace("")
+        guard workspacePath.isEmpty, bridge.selectedID == nil else { return }
+        bridge.newConversation()
     }
 
     /// Removes a project from the sidebar list (and its sort preference). If it was

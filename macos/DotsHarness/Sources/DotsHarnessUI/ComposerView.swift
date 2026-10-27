@@ -228,8 +228,17 @@ struct ComposerView: View {
         .sheet(isPresented: $showRemoteFolderPicker) {
             RemoteFolderPickerView(model: model)
         }
-        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
-            handleFileDrop(providers) { model.addDraftAttachments($0) }
+        .onDrop(of: [UTType.fileURL.identifier, UTType.image.identifier], isTargeted: $isDropTargeted) { providers in
+            handleAttachmentDrop(providers) { items in
+                model.addDraftAttachmentInputs(items.map { item in
+                    switch item {
+                    case .file(let url):
+                        .file(url)
+                    case .image(let data, let typeIdentifier):
+                        .imageData(data, typeIdentifier: typeIdentifier)
+                    }
+                })
+            }
         }
         .overlay {
             if isDropTargeted {
@@ -537,6 +546,47 @@ struct ComposerView: View {
         )
     }
 
+    private var gitBranchName: String {
+        let base = gitSnapshot.currentBranch ?? AppCopy.text("git.detached")
+        var suffix = ""
+        if gitSnapshot.ahead > 0 { suffix += " ↑\(gitSnapshot.ahead)" }
+        if gitSnapshot.behind > 0 { suffix += " ↓\(gitSnapshot.behind)" }
+        return base + suffix
+    }
+
+    private var gitBranchPill: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "arrow.triangle.branch")
+                .font(.system(size: 13, weight: .medium))
+            Text(gitBranchName)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            gitBranchChangeCounts
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+        }
+        .font(.callout)
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.primary.opacity(0.08), in: Capsule())
+    }
+
+    private var gitBranchChangeCounts: some View {
+        Group {
+            if gitSnapshot.added + gitSnapshot.removed > 0 {
+                HStack(spacing: 4) {
+                    Text("+\(gitSnapshot.added.formatted())").foregroundStyle(.green)
+                    Text("-\(gitSnapshot.removed.formatted())").foregroundStyle(.red)
+                }
+                .font(.system(.caption, design: .monospaced).weight(.medium))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+    }
+
     /// Fallback row for chats without a visible git bar.
     private var composerContext: some View {
         HStack(spacing: 7) {
@@ -556,7 +606,7 @@ struct ComposerView: View {
 
             if gitSnapshot.isRepository {
                 Button { showBranchMenu.toggle() } label: {
-                    contextPill(icon: "arrow.triangle.branch", title: gitBranchName)
+                    gitBranchPill
                 }
                 .buttonStyle(.plain)
                 .disabled(bridge.isBusy)
@@ -671,7 +721,6 @@ struct ComposerView: View {
             HStack(spacing: 8) {
                 gitContextControls
                 Spacer(minLength: 4)
-                gitChangeCounts
                 gitActions(compact: true)
                 hideGitBarButton
             }
@@ -687,7 +736,7 @@ struct ComposerView: View {
     }
 
     private var gitContextControls: some View {
-        Group {
+        HStack(spacing: 8) {
             Button { showProjectMenu.toggle() } label: {
                 contextPill(icon: currentProjectIcon, title: currentProjectTitle)
                     .frame(maxWidth: 220, alignment: .leading)
@@ -696,8 +745,8 @@ struct ComposerView: View {
             .popover(isPresented: $showProjectMenu, arrowEdge: .bottom) { projectPopover }
             .help(AppCopy.text("composer.projectPickerHelp"))
             Button { showBranchMenu.toggle() } label: {
-                contextPill(icon: "arrow.triangle.branch", title: gitSnapshot.currentBranch ?? AppCopy.text("git.detached"))
-                    .frame(maxWidth: 180, alignment: .leading)
+                gitBranchPill
+                    .frame(maxWidth: 240, alignment: .leading)
             }
             .buttonStyle(.plain)
             .disabled(bridge.isBusy)
@@ -711,22 +760,7 @@ struct ComposerView: View {
             .popover(isPresented: $showWorkLocationMenu, arrowEdge: .bottom) { workLocationPopover }
             .help(AppCopy.text("workLocation.help"))
         }
-    }
-
-    @ViewBuilder
-    private var gitChangeCounts: some View {
-        if gitSnapshot.added + gitSnapshot.removed > 0 {
-            HStack(spacing: 6) {
-                Text("+\(gitSnapshot.added.formatted())").foregroundStyle(.green)
-                Text("-\(gitSnapshot.removed.formatted())").foregroundStyle(.red)
-            }
-            .font(.system(.callout, design: .monospaced).weight(.medium))
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private func gitActions(compact: Bool) -> some View {
@@ -801,6 +835,7 @@ struct ComposerView: View {
                     onMoveSlashCommand: moveSlashCommand,
                     followUpSuggestion: visibleFollowUpSuggestion,
                     onDropFiles: { model.addDraftAttachments($0) },
+                    onDropImageData: { model.addDraftImageData($0, typeIdentifier: $1) },
                     onPasteImage: { model.addDraftImageData($0) }
                 )
                     .frame(height: editorHeight)
@@ -848,13 +883,12 @@ struct ComposerView: View {
             HStack(spacing: 8) {
                 ForEach(model.draftAttachments) { attachment in
                     ZStack(alignment: .topTrailing) {
-                        if attachment.kind == .image, let image = ImageFileCache.image(at: attachment.url) {
-                            Image(nsImage: image)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 64, height: 64)
-                                .clipped()
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        if attachment.kind == .image {
+                            DraftAttachmentThumbnail(
+                                url: attachment.url,
+                                name: attachment.name,
+                                icon: attachment.kind.systemImageName
+                            )
                         } else {
                             VStack(spacing: 4) {
                                 Image(systemName: attachment.kind.systemImageName)
@@ -864,8 +898,8 @@ struct ComposerView: View {
                                     .lineLimit(2)
                                     .multilineTextAlignment(.center)
                             }
-                                .frame(width: 64, height: 64)
-                                .foregroundStyle(.secondary)
+                            .frame(width: 64, height: 64)
+                            .foregroundStyle(.secondary)
                         }
 
                         Button {
@@ -1348,14 +1382,6 @@ struct ComposerView: View {
 
     private var currentProjectIcon: String {
         model.workspacePath.isEmpty ? "bubble.left.and.bubble.right" : "folder"
-    }
-
-    private var gitBranchName: String {
-        let base = gitSnapshot.currentBranch ?? AppCopy.text("git.detached")
-        var suffix = ""
-        if gitSnapshot.ahead > 0 { suffix += " ↑\(gitSnapshot.ahead)" }
-        if gitSnapshot.behind > 0 { suffix += " ↓\(gitSnapshot.behind)" }
-        return base + suffix
     }
 
     private var modelName: String {

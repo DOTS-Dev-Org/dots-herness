@@ -21,6 +21,9 @@ extension RouterController {
         disableNativeCompactionForRequest: Bool = false,
         onDelta: NativeAgentClient.StreamDeltaHandler? = nil
     ) async throws -> AgentResponse {
+        // An unpinned turn picks the roomiest account, so read quotas first;
+        // a reading under a minute old is reused.
+        if preferredAccountID == nil { await refreshAccountUsage() }
         let requestedModel = (model ?? selectedModelID).trimmingCharacters(in: .whitespacesAndNewlines)
         guard requestedModel == ModelRouter.autoModelID else {
             autoEffortOverride = nil
@@ -380,6 +383,8 @@ extension RouterController {
         }
         func fiveHourRank(_ account: StoredProviderAccount) -> Double {
             guard let snapshot = usage[account.id] else { return 0 }
+            // Code Assist meters each model apart; that model's own share decides.
+            if let share = snapshot.models[model] { return remainingRank(share) }
             if let used = snapshot.windows.first(where: { $0.kind == .fiveHour })?.usedPercent {
                 return remainingRank(1 - min(max(used, 0), 1))
             }
@@ -516,6 +521,7 @@ extension RouterController {
                     )
                     response.servedAccountID = account.id
                     response.servedModelID = configuration.model
+                    recordHeaderUsage(response.rateLimitRemaining, resetsAt: response.rateLimitResetsAt, for: account)
                     response.servedCacheKey = routeKey
                     if recordRouteState {
                         status = AppCopy.format("router.connected", configuration.provider)

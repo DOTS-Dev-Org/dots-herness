@@ -182,6 +182,52 @@ static int do_status(git_repository *repository, char *output, size_t capacity) 
     return HERNESS_GIT_OK;
 }
 
+static int append_branch_record(char *output, size_t capacity, const char *kind, const char *name) {
+    if (!output || capacity == 0) return HERNESS_GIT_ERROR;
+    size_t used = strlen(output);
+    if (used >= capacity) return HERNESS_GIT_ERROR;
+    int written = snprintf(output + used, capacity - used, "%s\t%s\n", kind, name ? name : "");
+    if (written < 0 || (size_t)written >= capacity - used) {
+        write_output(output, capacity, "The Git branch list is too large.");
+        return HERNESS_GIT_ERROR;
+    }
+    return HERNESS_GIT_OK;
+}
+
+static int do_branches(git_repository *repository, char *output, size_t capacity) {
+    git_reference *head = NULL;
+    git_reference *symbolic_head = NULL;
+    const char *current = NULL;
+    int head_code = git_repository_head(&head, repository);
+    if (head_code == 0 && git_reference_is_branch(head)) {
+        current = git_reference_shorthand(head);
+    } else if (git_reference_lookup(&symbolic_head, repository, "HEAD") == 0) {
+        const char *target = git_reference_symbolic_target(symbolic_head);
+        if (target && strncmp(target, "refs/heads/", 11) == 0) current = target + 11;
+    }
+
+    int code = append_branch_record(output, capacity, "current", current);
+    git_branch_iterator *iterator = NULL;
+    if (code == HERNESS_GIT_OK) code = git_branch_iterator_new(&iterator, repository, GIT_BRANCH_LOCAL);
+    while (code == HERNESS_GIT_OK) {
+        git_reference *branch = NULL;
+        git_branch_t type;
+        int next_code = git_branch_next(&branch, &type, iterator);
+        if (next_code == GIT_ITEROVER) break;
+        if (next_code != 0) {
+            code = fail(output, capacity, HERNESS_GIT_ERROR);
+        } else {
+            (void)type;
+            code = append_branch_record(output, capacity, "branch", git_reference_shorthand(branch));
+        }
+        if (branch) git_reference_free(branch);
+    }
+    if (iterator) git_branch_iterator_free(iterator);
+    if (symbolic_head) git_reference_free(symbolic_head);
+    if (head) git_reference_free(head);
+    return code;
+}
+
 static int diff_cb(const git_diff_delta *delta,
                    const git_diff_hunk *hunk,
                    const git_diff_line *line,
@@ -333,6 +379,7 @@ int herness_git_execute(const char *operation,
     else if (strcmp(operation, "checkout") == 0) result = do_checkout(repository, argument, output, output_capacity);
     else if (strcmp(operation, "create_branch") == 0) result = do_create_branch(repository, argument, output, output_capacity);
     else if (strcmp(operation, "status") == 0) result = do_status(repository, output, output_capacity);
+    else if (strcmp(operation, "branches") == 0) result = do_branches(repository, output, output_capacity);
     else if (strcmp(operation, "diff") == 0) result = do_diff(repository, output, output_capacity);
     else if (strcmp(operation, "commit") == 0) result = do_commit(repository, argument, author_name, author_email, output, output_capacity);
     else if (strcmp(operation, "push") == 0) result = do_push(repository, argument, second, token, output, output_capacity);

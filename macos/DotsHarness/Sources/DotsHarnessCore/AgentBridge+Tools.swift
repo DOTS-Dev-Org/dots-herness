@@ -367,7 +367,9 @@ extension NativeAgentHost {
           ask_user, in one call: what this project is for, the hard constraints, and what is
           explicitly out of scope.
         - Record each answer with remember (kind "project", keys "goal", "constraints",
-          "out-of-scope"), then carry out their request.
+          "out-of-scope"), then carry out their request. Record only what the user said about
+          the project as a whole: never the current task as its goal, and never that something
+          was not stated - leave that key unrecorded instead.
         - Skip the brief for a one-off question, a trivial edit, or when the user has already
           told you these in this conversation - record what they said instead of asking again.
         """
@@ -1405,7 +1407,7 @@ extension NativeAgentHost {
     func presentQuestions(_ questions: [AskUserQuestion], id: String, conversationID: String) async -> [String]? {
         let pending = PendingQuestion(conversationID: conversationID, toolCallID: id, questions: questions)
         pendingQuestion = pending
-        notifyAttention(.question, in: conversationID, detail: AppCopy.text("ask.title"))
+        notifyAttention(.question, in: conversationID, detail: questions.map(\.prompt).joined(separator: " · "))
         onRemoteEvent?("question.required", [
             "questionId": pending.id,
             "conversationId": pending.conversationID,
@@ -1451,6 +1453,7 @@ extension NativeAgentHost {
             .prefix(3)
         for lesson in lessons {
             askedLessonIDs.insert(lesson.id)
+            try? feedbackStore?.dismissLessonPrompt(id: lesson.id)
             questions.append(AskUserQuestion(
                 id: "lesson-" + lesson.id,
                 header: AppCopy.text("memory.lesson.header"),
@@ -1467,13 +1470,7 @@ extension NativeAgentHost {
             try? memory.setProjectMemoryTrust(false)
         }
         guard let answers else {
-            // An explicit Skip dismisses lesson review. A cancelled run does not,
-            // so an interrupted question can still be answered on the next launch.
-            if !Task.isCancelled {
-                for question in questions where question.id.hasPrefix("lesson-") {
-                    try? feedbackStore?.dismissLessonPrompt(id: String(question.id.dropFirst("lesson-".count)))
-                }
-            }
+            // Every review is marked when offered, so stopping here won't ask again.
             return false
         }
         var changed = false
@@ -1489,10 +1486,6 @@ extension NativeAgentHost {
                 } else if answer == lessonOptions[1] {
                     try? feedbackStore?.forgetLesson(id: id)
                     changed = true
-                } else {
-                    // Custom text is not a keep/forget decision. Keep the lesson
-                    // as an unconfirmed hint, but remember not to repeat the card.
-                    try? feedbackStore?.dismissLessonPrompt(id: id)
                 }
             }
         }

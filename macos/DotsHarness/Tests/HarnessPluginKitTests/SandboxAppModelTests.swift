@@ -146,14 +146,120 @@ final class SandboxAppModelTests: XCTestCase {
         )
     }
 
-    func testNewConversationWithoutProjectDoesNotCreateProjectlessConversation() throws {
+    func testNewConversationWithoutProjectCreatesProjectlessConversation() throws {
         let model = AppModel(paths: temporaryPaths())
 
         model.newConversation()
 
         XCTAssertEqual(model.workspacePath, "")
-        XCTAssertNil(model.selectedConversationID)
+        XCTAssertNotNil(model.selectedConversationID)
         XCTAssertNil(model.selected?.cwd)
+        XCTAssertTrue(model.selected?.projectless ?? false)
+    }
+
+    func testPlanModeDoesNotLeakAcrossNewOrSelectedConversations() throws {
+        let paths = temporaryPaths()
+        let repository = try makeRepository(paths.root.appendingPathComponent("plan-state", isDirectory: true))
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+
+        let model = AppModel(paths: paths)
+        model.setSeedProjectRules(false)
+        model.setWorkspace(repository.path)
+        model.newConversation()
+        let firstID = try XCTUnwrap(model.selectedConversationID)
+        let firstIndex = try XCTUnwrap(model.bridge.conversations.firstIndex { $0.id == firstID })
+        model.bridge.conversations[firstIndex].messages = [ChatMessage(kind: .user, text: "Existing turn")]
+        model.bridge.conversations[firstIndex].blank = false
+
+        model.isPlanMode = true
+        model.newConversation()
+        let secondID = try XCTUnwrap(model.selectedConversationID)
+        XCTAssertNotEqual(firstID, secondID)
+        XCTAssertFalse(model.isPlanMode)
+
+        model.isPlanMode = true
+        model.selectedConversationID = firstID
+        XCTAssertFalse(model.isPlanMode)
+        model.isPlanMode = true
+        model.selectedConversationID = secondID
+        XCTAssertFalse(model.isPlanMode)
+    }
+
+    func testNewConversationWithoutScopeUsesMostRecentProject() throws {
+        let paths = temporaryPaths()
+        let previous = try makeRepository(paths.root.appendingPathComponent("previous", isDirectory: true))
+        let mostRecent = try makeRepository(paths.root.appendingPathComponent("most-recent", isDirectory: true))
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+        let values: [String: JSONValue] = [
+            "agent.workspace": .null,
+            "agent.projects": .array([.string(mostRecent.path), .string(previous.path)]),
+        ]
+        try JSONEncoder().encode(values).write(to: paths.settings, options: .atomic)
+
+        let model = AppModel(paths: paths)
+        model.setSeedProjectRules(false)
+        model.newConversation()
+
+        let expectedPath = SandboxProfile.canonicalURL(mostRecent).path
+        XCTAssertEqual(model.workspacePath, expectedPath)
+        XCTAssertEqual(ConversationStore.normalizedPath(model.selected?.cwd), expectedPath)
+        XCTAssertFalse(model.selected?.projectless ?? true)
+    }
+
+    func testNoProjectScopeResumesLatestProjectlessChatInsteadOfProjectChat() throws {
+        let paths = temporaryPaths()
+        let project = try makeRepository(paths.root.appendingPathComponent("project", isDirectory: true))
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+
+        let projectChat = Conversation(
+            id: "project-chat",
+            title: "Project chat",
+            messages: [ChatMessage(kind: .user, text: "Project-only context", createdAt: Date(timeIntervalSince1970: 200))],
+            blank: false,
+            cwd: project.path
+        )
+        let standaloneChat = Conversation(
+            id: "standalone-chat",
+            title: "Standalone chat",
+            messages: [ChatMessage(kind: .user, text: "No-project context", createdAt: Date(timeIntervalSince1970: 100))],
+            blank: false,
+            projectless: true
+        )
+        ConversationStore(paths: paths).save([projectChat, standaloneChat])
+
+        let model = AppModel(paths: paths)
+        model.setSeedProjectRules(false)
+        model.setWorkspace(project.path)
+        model.selectNoProject()
+
+        XCTAssertEqual(model.selectedConversationID, standaloneChat.id)
+        XCTAssertTrue(model.selected?.projectless ?? false)
+        XCTAssertFalse(model.conversations.contains(where: { $0.id == projectChat.id }))
+    }
+
+    func testNoProjectSelectionCreatesStandaloneChatWithoutReusingProjectDraft() throws {
+        let paths = temporaryPaths()
+        let project = try makeRepository(paths.root.appendingPathComponent("project", isDirectory: true))
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+
+        let model = AppModel(paths: paths)
+        model.setSeedProjectRules(false)
+        model.setWorkspace(project.path)
+        let projectDraftID = try XCTUnwrap(model.selectedConversationID)
+        XCTAssertFalse(model.selected?.projectless ?? true)
+
+        model.selectNoProject()
+        let standaloneDraftID = try XCTUnwrap(model.selectedConversationID)
+        XCTAssertTrue(model.selected?.projectless ?? false)
+        model.newConversation()
+
+        let standalone = try XCTUnwrap(model.selected)
+        XCTAssertNotEqual(standalone.id, projectDraftID)
+        XCTAssertEqual(standalone.id, standaloneDraftID)
+        XCTAssertNil(standalone.cwd)
+        XCTAssertTrue(standalone.projectless)
+        XCTAssertTrue(standalone.messages.isEmpty)
+        XCTAssertEqual(ConversationStore(paths: paths).load(id: projectDraftID)?.cwd, project.path)
     }
 
     func testNewChatFromMissingProjectDoesNotFallBackToProjectlessChat() throws {

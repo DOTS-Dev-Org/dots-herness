@@ -424,6 +424,43 @@ final class AgentBridgeTests: XCTestCase {
         XCTAssertEqual(bridge.conversations.count, 2)
     }
 
+    @MainActor
+    func testNewConversationDoesNotReuseDraftWithCacheHistory() throws {
+        let paths = temporaryPaths()
+        defer { try? FileManager.default.removeItem(at: paths.root) }
+        let workspace = paths.root.appendingPathComponent("project", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+
+        let bridge = AgentBridge(paths: paths, router: RouterController(baseURL: "http://127.0.0.1:1"))
+        bridge.start(workspacePath: workspace.path)
+        bridge.newConversation()
+        let oldID = try XCTUnwrap(bridge.selectedID)
+        let configuration = AgentConfiguration(
+            baseURL: "https://example.test", model: "test", api: RouterAPIKind.openAICompatible.rawValue
+        )
+        bridge.recordContextUsage(
+            AgentResponse(
+                message: AgentMessage(role: .assistant, content: "ok"),
+                usage: AgentUsage(inputTokens: 40_000, outputTokens: 1, cachedTokens: 32_000, cacheWriteTokens: 0)
+            ),
+            conversationID: oldID,
+            configuration: configuration,
+            cacheKey: "old-prefix",
+            requestKind: .main,
+            strategy: .none,
+            contextTokensBefore: 40_000,
+            contextTokensAfter: 40_000,
+            startedAt: Date()
+        )
+        XCTAssertFalse(bridge.contextUsageEvents(in: oldID).isEmpty)
+
+        bridge.newConversation()
+
+        let newID = try XCTUnwrap(bridge.selectedID)
+        XCTAssertNotEqual(newID, oldID)
+        XCTAssertTrue(bridge.contextUsageEvents(in: newID).isEmpty)
+    }
+
     func testConversationStoreIsWorkspaceScoped() throws {
         let paths = temporaryPaths()
         let first = paths.root.appendingPathComponent("project-a", isDirectory: true)
@@ -1111,7 +1148,7 @@ final class AgentBridgeTests: XCTestCase {
     }
 
     @MainActor
-    func testModelCanSwitchARunningTurnToPlanMode() async throws {
+    func testModelCannotSwitchNormalRunToPlanMode() async throws {
         URLProtocol.registerClass(ApprovalURLProtocol.self)
         defer { ApprovalURLProtocol.reset(); URLProtocol.unregisterClass(ApprovalURLProtocol.self) }
         ApprovalURLProtocol.responses = [
@@ -1126,18 +1163,16 @@ final class AgentBridgeTests: XCTestCase {
             paths: paths,
             endpoint: AgentEndpointController(baseURL: "http://approval.test", modelID: "test-model")
         )
-        var entered = false
-        host.onPlanModeEntered = { entered = true }
         host.start(workspacePath: workspace.path)
         await host.refreshConnection()
 
-        await host.send(text: "bu özelliği nasıl kuracağımızı adım adım düşünelim, kod yazma", mode: .queue)
+        await host.send(text: "Inspect the implementation and explain its behavior.", mode: .queue)
         for _ in 0..<200 where host.selected?.running == true { try await Task.sleep(for: .milliseconds(10)) }
 
-        XCTAssertTrue(entered)
-        let plan = try XCTUnwrap(host.selected?.messages.last)
-        XCTAssertEqual(plan.kind, .plan)
-        XCTAssertEqual(host.selected?.pendingPlanMessageID, plan.id)
+        XCTAssertFalse(host.activeRunPlanMode)
+        XCTAssertFalse(host.selected?.planGateActive ?? false)
+        XCTAssertNil(host.selected?.pendingPlanMessageID)
+        XCTAssertEqual(host.selected?.messages.last(where: { $0.kind == .assistant })?.text, "1. Read the code")
     }
 
     @MainActor

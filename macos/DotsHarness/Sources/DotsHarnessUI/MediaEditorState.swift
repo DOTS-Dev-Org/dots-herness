@@ -10,7 +10,7 @@ import DotsHarnessCore
 enum MediaTool: String {
     case move, hand, scale, frame, section, slice
     case rectangle, line, arrow, ellipse, polygon, star
-    case pen, pencil, text, textPath, comment
+    case pen, pencil, marker, text, textPath, comment
 
     var systemImage: String {
         switch self {
@@ -28,6 +28,7 @@ enum MediaTool: String {
         case .star: return "star"
         case .pen: return "pencil.tip"
         case .pencil: return "pencil"
+        case .marker: return "highlighter"
         case .text: return "textformat"
         case .textPath: return "textformat.abc.dottedunderline"
         case .comment: return "bubble.left"
@@ -58,6 +59,7 @@ enum MediaTool: String {
         case .ellipse: return "o"
         case .pen: return "p"
         case .pencil: return "P"
+        case .marker: return nil
         case .text: return "t"
         case .comment: return "c"
         case .polygon, .star, .textPath: return nil
@@ -71,7 +73,7 @@ enum MediaTool: String {
 
     static let all: [MediaTool] = [
         .move, .hand, .scale, .frame, .section, .slice, .rectangle, .line, .arrow, .ellipse, .polygon, .star,
-        .pen, .pencil, .text, .textPath, .comment,
+        .pen, .pencil, .marker, .text, .textPath, .comment,
     ]
 }
 
@@ -550,29 +552,35 @@ final class MediaEditorState: ObservableObject {
                 }
             }
             addLayer(layer)
-        case .move, .hand, .scale, .pen, .pencil:
+        case .move, .hand, .scale, .pen, .pencil, .marker:
             break
         }
     }
 
     /// Adds a stroked path through `points` (board coordinates): a line, an arrow, or a pen or pencil stroke.
-    func addPath(_ points: [CGPoint], name: String, arrow: Bool = false) {
+    func addPath(_ points: [CGPoint], name: String, arrow: Bool = false, colorHex: String = "#111111", strokeWidth: Double = 4, opacity: Double = 1) {
         guard points.count >= 2, let canvas = target(at: points[0]) else { return }
         canvasID = canvas.id
         let minX = points.map(\.x).min() ?? 0
         let minY = points.map(\.y).min() ?? 0
         let width = max((points.map(\.x).max() ?? 0) - minX, 1)
         let height = max((points.map(\.y).max() ?? 0) - minY, 1)
+        let normalized: [Double] = points.flatMap { point -> [Double] in
+            [Double((point.x - minX) / width), Double((point.y - minY) / height)]
+        }
+        let x = Double(minX - canvas.x)
+        let y = Double(minY - canvas.y)
         addLayer(MediaLayer(
             name: name,
             kind: .path,
-            x: minX - canvas.x,
-            y: minY - canvas.y,
-            width: width,
-            height: height,
-            colorHex: "#111111",
-            strokeWidth: 4,
-            points: points.flatMap { [($0.x - minX) / width, ($0.y - minY) / height] },
+            x: x,
+            y: y,
+            width: Double(width),
+            height: Double(height),
+            opacity: opacity,
+            colorHex: colorHex,
+            strokeWidth: strokeWidth,
+            points: normalized,
             arrow: arrow
         ))
     }

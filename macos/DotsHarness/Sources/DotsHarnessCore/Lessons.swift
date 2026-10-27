@@ -17,7 +17,7 @@ public struct Lesson: Codable, Equatable, Sendable {
     public var paths: [String]
     public var sources: [String]
     public var lastSeen: Date
-    /// A dismissed one-turn review prompt should not return on every launch.
+    /// Whether this one-turn review was already shown; it should not return on another launch.
     public var reviewPromptDismissed: Bool?
 
     public init(when: String = "", rule: String, why: String = "", paths: [String] = [], sources: [String] = [], lastSeen: Date = Date(), reviewPromptDismissed: Bool? = nil) {
@@ -396,8 +396,7 @@ extension FeedbackStore {
         }
     }
 
-    /// Records that the user skipped or answered a review prompt without choosing
-    /// keep/forget. The lesson stays an unconfirmed hint, but is not asked again.
+    /// Records that this review prompt was shown. An unanswered or interrupted review is not asked again.
     public func dismissLessonPrompt(id: String) throws {
         try mutateLessons { all in
             guard let index = all.firstIndex(where: { $0.id == id }) else { return }

@@ -90,15 +90,20 @@ struct SidebarUsageBadge: View {
 
 @MainActor
 func accountUsageUsedFraction(_ router: RouterController) -> Double? {
-    if case .loaded(let usage) = router.claudeUsage {
-        if let current = usage.windows.first(where: { $0.kind == .fiveHour })?.usedPercent { return current }
-        if let percent = usage.worstUsedPercent { return percent }
+    var fiveHourPercentages = router.accountUsage.values.compactMap { snapshot in
+        snapshot.windows.first(where: { $0.kind == .fiveHour })?.usedPercent
     }
+    if case .loaded(let usage) = router.claudeUsage,
+       let fiveHourPercent = usage.windows.first(where: { $0.kind == .fiveHour })?.usedPercent {
+        fiveHourPercentages.append(fiveHourPercent)
+    }
+    if let highestFiveHourPercent = fiveHourPercentages.max() { return highestFiveHourPercent }
+
+    if case .loaded(let usage) = router.claudeUsage,
+       let percent = usage.worstUsedPercent { return percent }
     return router.accountUsage.values
-        .compactMap { snapshot in
-            snapshot.windows.first(where: { $0.kind == .fiveHour })?.usedPercent
-                ?? snapshot.remainingFraction.map { min(max(1 - $0, 0), 1) }
-        }
+        .compactMap(\.remainingFraction)
+        .map { min(max(1 - $0, 0), 1) }
         .max()
 }
 

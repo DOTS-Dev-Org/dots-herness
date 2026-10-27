@@ -145,4 +145,18 @@ public sealed class WorkspaceFactsTests : IDisposable
         WorkspaceFacts.SetTrust(cloned, userRoot, true);
         Assert.StartsWith("Project memory for this workspace", WorkspaceFacts.Text(cloned, userRoot));
     }
+
+    [Fact]
+    public void DecisionsKeepTheirReasonAndEndAtASentence()
+    {
+        Assert.Equal("Keep File.cs small.", WorkspaceFacts.Clip("Keep File.cs small. Reason follows here", 26));
+        Assert.Equal("one two…", WorkspaceFacts.Clip("one two three four", 12));
+        var text = "Ship SQLite only. " + string.Concat(Enumerable.Repeat("word ", 50)) + "Reason: the reason survives.";
+        Assert.True(text.Length > WorkspaceFacts.MaxTextLength);
+        WorkspaceFacts.Record(_workspace, new System.Text.Json.Nodes.JsonObject
+        {
+            ["kind"] = "decision", ["key"] = "store", ["text"] = text,
+        }.ToJsonString());
+        Assert.Contains("the reason survives.", WorkspaceFacts.Text(_workspace));
+    }
 }

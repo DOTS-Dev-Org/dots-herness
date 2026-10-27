@@ -16,7 +16,7 @@ enum {
 /*
  * Execute one libgit2 operation.
  *
- * operation: clone, fetch, checkout, create_branch, status, diff, commit, push
+ * operation: clone, fetch, checkout, create_branch, branches, status, diff, commit, push
  * repo_path: local repository path; clone uses the destination path
  * argument:   URL, branch, or commit message, depending on operation
  * second:     branch/remote, depending on operation

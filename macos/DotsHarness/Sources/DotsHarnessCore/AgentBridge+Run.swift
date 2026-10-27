@@ -199,6 +199,7 @@ extension NativeAgentHost {
         do {
             var toolSteps = 0
             var wrapUpRequested = false
+            var planReminderSent = false
             var toolSignatures: [String: Int] = [:]
             var fileEdits: [String: Int] = [:]
 
@@ -218,6 +219,7 @@ extension NativeAgentHost {
                     saveModelContext(messages, in: conversationID)
                     toolSteps = 0
                     wrapUpRequested = false
+                    planReminderSent = false
                     return true
                 }
                 let nextContext = messages + [user]
@@ -689,6 +691,14 @@ extension NativeAgentHost {
                         saveModelContext(messages, in: conversationID)
                         continue
                     }
+                    if !planMode, !planReminderSent,
+                       let reminder = PlanStepsTool.unfinishedReminder(
+                           in: conversations.first(where: { $0.id == conversationID })?.messages ?? []) {
+                        planReminderSent = true
+                        messages.append(AgentMessage(role: .user, content: reminder))
+                        saveModelContext(messages, in: conversationID)
+                        continue
+                    }
                     backlogControlText = response.message.content
                     let text = response.message.content.trimmingCharacters(in: .whitespacesAndNewlines)
                     let mediaItems = await materializeMedia(response.media)
@@ -774,15 +784,6 @@ extension NativeAgentHost {
                     continue
                 }
                 let toolCalls = response.message.toolCalls.map { deferredTools.resolve($0, catalog: tools) }
-                if !planMode, onPlanModeEntered != nil,
-                   toolCalls.contains(where: { $0.name == DeferredToolSession.enterPlanName }) {
-                    // The model read the request as a plan request. The rest of the turn runs in
-                    // plan mode; its guidance arrives as the tool result, so the cached prefix holds.
-                    planMode = true
-                    activeRunPlanMode = true
-                    updateConversation(conversationID) { $0.planGateActive = true }
-                    onPlanModeEntered?()
-                }
                 var scopedRulesNeedReview: Set<String> = []
                 if let workspace {
                     // Resolve every path in the batch against the context the model

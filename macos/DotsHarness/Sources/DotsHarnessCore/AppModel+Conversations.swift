@@ -4,9 +4,44 @@
 import AppKit
 import Combine
 import Foundation
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 import HarnessPluginKit
+
+public enum DraftAttachmentInput: Sendable {
+    case file(URL)
+    case imageData(Data, typeIdentifier: String?)
+}
+
+private func prepareDraftAttachment(
+    _ input: DraftAttachmentInput,
+    runtime: URL
+) throws -> ChatAttachment? {
+    switch input {
+    case .file(let url):
+        return ChatAttachment(url: url)
+    case .imageData(let data, let typeIdentifier):
+        guard !data.isEmpty else { return nil }
+        let directory = runtime.appendingPathComponent("pasted-images", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
+        )
+        let detectedIdentifier = CGImageSourceCreateWithData(data as CFData, nil)
+            .flatMap(CGImageSourceGetType)
+            .map { $0 as String }
+        let imageType = detectedIdentifier.flatMap { UTType($0) }
+            ?? typeIdentifier.flatMap { UTType($0) }
+        let fileExtension = imageType?.preferredFilenameExtension ?? "png"
+        let url = directory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(fileExtension)
+        try data.write(to: url, options: .atomic)
+        return ChatAttachment(url: url)
+    }
+}
 
 @MainActor
 extension AppModel {
@@ -18,7 +53,18 @@ extension AppModel {
                 if isNoProjectScope {
                     startBlankConversation()
                 } else {
-                    chooseWorkspace()
+                    let selectedProjectPath = selected.flatMap { conversation -> String? in
+                        guard !conversation.projectless, let path = conversation.cwd else { return nil }
+                        return Self.canonicalExistingWorkspacePath(path)
+                    }
+                    let recentProjectPath = projectPaths.compactMap {
+                        Self.canonicalExistingWorkspacePath($0)
+                    }.first
+                    if let path = selectedProjectPath ?? recentProjectPath {
+                        newConversation(in: path)
+                    } else {
+                        startBlankConversation()
+                    }
                 }
             } else {
                 promptToRelocateProject(missingPath: workspacePath) { [weak self] newPath in
@@ -41,6 +87,7 @@ extension AppModel {
     private func startBlankConversation() {
         cancelEditing()
         saveDraftState()
+        isPlanMode = false
         bridge.newConversation()
         restoreDraftState()
         objectWillChange.send()
@@ -90,10 +137,47 @@ extension AppModel {
     }
 
     public func addDraftAttachments(_ urls: [URL]) {
-        for url in urls {
-            guard let attachment = ChatAttachment(url: url),
-                  !draftAttachments.contains(where: { $0.path == attachment.path }) else { continue }
-            draftAttachments.append(attachment)
+        addDraftAttachmentInputs(urls.map(DraftAttachmentInput.file))
+    }
+
+    public func addDraftAttachmentInputs(_ inputs: [DraftAttachmentInput]) {
+        guard !inputs.isEmpty else { return }
+        let runtime = paths.runtime
+        let targetConversationID = bridge.selectedID
+        let preparation = Task.detached(priority: .utility) { () -> ([ChatAttachment], String?) in
+            var attachments: [ChatAttachment] = []
+            var firstError: String?
+            for input in inputs {
+                do {
+                    if let attachment = try prepareDraftAttachment(input, runtime: runtime) {
+                        attachments.append(attachment)
+                    }
+                } catch {
+                    if firstError == nil { firstError = error.localizedDescription }
+                }
+            }
+            return (attachments, firstError)
+        }
+
+        Task { @MainActor [weak self] in
+            let (attachments, errorMessage) = await preparation.value
+            guard let self else { return }
+            if let errorMessage { historyError = errorMessage }
+            guard !attachments.isEmpty else { return }
+
+            if let targetConversationID, bridge.selectedID != targetConversationID {
+                let key = draftKey(for: targetConversationID)
+                var saved = draftAttachmentsByConversation[key] ?? []
+                for attachment in attachments where !saved.contains(where: { $0.path == attachment.path }) {
+                    saved.append(attachment)
+                }
+                draftAttachmentsByConversation[key] = saved
+                return
+            }
+            guard bridge.selectedID == targetConversationID else { return }
+            for attachment in attachments where !draftAttachments.contains(where: { $0.path == attachment.path }) {
+                draftAttachments.append(attachment)
+            }
         }
     }
 
@@ -109,21 +193,8 @@ extension AppModel {
         }
     }
 
-    public func addDraftImageData(_ data: Data) {
-        guard !data.isEmpty else { return }
-        let directory = paths.runtime.appendingPathComponent("pasted-images", isDirectory: true)
-        let url = directory.appendingPathComponent("\(UUID().uuidString).png")
-        do {
-            try FileManager.default.createDirectory(
-                at: directory,
-                withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700]
-            )
-            try data.write(to: url, options: .atomic)
-            addDraftAttachments([url])
-        } catch {
-            historyError = error.localizedDescription
-        }
+    public func addDraftImageData(_ data: Data, typeIdentifier: String? = nil) {
+        addDraftAttachmentInputs([.imageData(data, typeIdentifier: typeIdentifier)])
     }
 
     public func removeDraftAttachment(_ attachment: ChatAttachment) {
@@ -457,6 +528,7 @@ extension AppModel {
         commitNavigationDestination()
         cancelEditing()
         saveDraftState()
+        isPlanMode = false
         bridge.select(id)
         restoreDraftState()
         commitNavigationDestination()

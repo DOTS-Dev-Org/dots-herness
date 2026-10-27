@@ -761,6 +761,27 @@
   <data name="studio.template.announcement" xml:space="preserve"><value>Duyuru</value></data>
   <data name="studio.template.story" xml:space="preserve"><value>Hikâye</value></data>
   <data name="studio.template.thumbnail" xml:space="preserve"><value>Video kapağı</value></data>
+  <data name="studio.template.youtube" xml:space="preserve"><value>YouTube kapağı</value></data>
+  <data name="studio.crop" xml:space="preserve"><value>Görseli kırp</value></data>
+  <data name="studio.crop.free" xml:space="preserve"><value>Serbest</value></data>
+  <data name="studio.tool.marker" xml:space="preserve"><value>Fosforlu kalem</value></data>
+  <data name="studio.video.trimExport" xml:space="preserve"><value>Kırp ve projeye ekle</value></data>
+  <data name="studio.video.trimUnavailable" xml:space="preserve"><value>Bu video kullanılabilir codec ile dışa aktarılamıyor.</value></data>
+  <data name="studio.video.trimFailed" xml:space="preserve"><value>Video dışa aktarılamadı.</value></data>
+  <data name="studio.video.sourceMissing" xml:space="preserve"><value>Kaynak video bulunamadı.</value></data>
+  <data name="studio.video.ffmpegMissing" xml:space="preserve"><value>Windows veya Linux'ta videoyu kesmek için FFmpeg'i kurup uygulamayı yeniden başlatın.</value></data>
+  <data name="studio.video.loading" xml:space="preserve"><value>Video yükleniyor…</value></data>
+  <data name="studio.video.playerUnavailable" xml:space="preserve"><value>Bu video biçimi yerel oynatıcı tarafından desteklenmiyor.</value></data>
+  <data name="studio.video.ready" xml:space="preserve"><value>In ve Out noktalarını seçip yeni klibi dışa aktarın.</value></data>
+  <data name="studio.video.enterRange" xml:space="preserve"><value>In ve Out zamanlarını saniye olarak girip yeni klibi dışa aktarın.</value></data>
+  <data name="studio.video.trimRangeInvalid" xml:space="preserve"><value>Out zamanı In zamanından sonra olmalı.</value></data>
+  <data name="studio.video.exporting" xml:space="preserve"><value>Kırpılmış video kodlanıyor…</value></data>
+  <data name="studio.video.trimAdded" xml:space="preserve"><value>Kırpılmış klip projeye eklendi.</value></data>
+  <data name="studio.video.trimCancelled" xml:space="preserve"><value>Video dışa aktarma iptal edildi.</value></data>
+  <data name="studio.video.markIn" xml:space="preserve"><value>Başlangıcı ayarla</value></data>
+  <data name="studio.video.markOut" xml:space="preserve"><value>Bitişi ayarla</value></data>
+  <data name="studio.video.play" xml:space="preserve"><value>Oynat</value></data>
+  <data name="studio.video.pause" xml:space="preserve"><value>Duraklat</value></data>
   <data name="studio.template.slide" xml:space="preserve"><value>Başlık slaytı</value></data>
   <data name="studio.template.logo" xml:space="preserve"><value>Logo</value></data>
   <data name="studio.template.mobile" xml:space="preserve"><value>Mobil ekran</value></data>
@@ -1019,6 +1040,28 @@
   <data name="library.add" xml:space="preserve"><value>Dosya ekle</value></data>
   <data name="library.addFailed" xml:space="preserve"><value>{0} dosya eklenemedi.</value></data>
   <data name="library.open" xml:space="preserve"><value>Aç</value></data>
+  <data name="library.favorite" xml:space="preserve"><value>Favorilere ekle</value></data>
+  <data name="library.unfavorite" xml:space="preserve"><value>Favorilerden çıkar</value></data>
+  <data name="library.favorites" xml:space="preserve"><value>Favoriler</value></data>
+  <data name="library.showAll" xml:space="preserve"><value>Tümünü göster</value></data>
+  <data name="library.unfiled" xml:space="preserve"><value>Klasörsüz</value></data>
+  <data name="library.allFolders" xml:space="preserve"><value>Tüm klasörler</value></data>
+  <data name="library.folderFilter" xml:space="preserve"><value>Klasör</value></data>
+  <data name="library.sortNewest" xml:space="preserve"><value>En yeni önce</value></data>
+  <data name="library.sortOldest" xml:space="preserve"><value>En eski önce</value></data>
+  <data name="library.exportSelected" xml:space="preserve"><value>Seçilenleri dışa aktar</value></data>
+  <data name="library.select" xml:space="preserve"><value>Seç</value></data>
+  <data name="library.deselect" xml:space="preserve"><value>Seçimi kaldır</value></data>
+  <data name="library.selectAll" xml:space="preserve"><value>Tümünü seç</value></data>
+  <data name="library.deselectAll" xml:space="preserve"><value>Seçimi temizle</value></data>
+  <data name="library.selectHelp" xml:space="preserve"><value>Dışa aktarmak için öğe seçin</value></data>
+  <data name="library.organize" xml:space="preserve"><value>Düzenle</value></data>
+  <data name="library.folderAndTags" xml:space="preserve"><value>Klasör | virgülle ayrılmış etiketler</value></data>
+  <data name="library.folder" xml:space="preserve"><value>Klasör</value></data>
+  <data name="library.tags" xml:space="preserve"><value>Etiketler</value></data>
+  <data name="library.ocrLocal" xml:space="preserve"><value>Metni bu cihazda tanı</value></data>
+  <data name="library.ocrRunning" xml:space="preserve"><value>Metin tanınıyor…</value></data>
+  <data name="library.ocrUnavailable" xml:space="preserve"><value>Metni yerel olarak tanımak için Tesseract OCR'ı kurup PATH'e ekleyin.</value></data>
   <data name="library.empty.title" xml:space="preserve"><value>Henüz bir şey yok</value></data>
   <data name="library.empty.detail" xml:space="preserve"><value>Ürettiğiniz görsel, video, ses ve müzikler buraya kendiliğinden eklenir. Belgeleri ve diğer dosyaları siz ekleyin.</value></data>
   <data name="backgroundTasks.title" xml:space="preserve"><value>Arka plan görevleri</value></data>

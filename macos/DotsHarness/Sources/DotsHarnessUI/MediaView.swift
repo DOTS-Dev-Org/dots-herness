@@ -92,7 +92,7 @@ private struct MediaHomeView: View {
     @State private var renameText = ""
     @State private var deleteTarget: MediaProject?
     /// Built once: a template hands out fresh layer ids on every call.
-    @State private var templates = MediaTemplate.all.map { (template: $0, canvas: $0.canvas()) }
+    @State private var templates: [(template: MediaTemplate, canvas: MediaCanvas)] = []
 
     private let columns = [GridItem(.adaptive(minimum: 260, maximum: 420), spacing: 20)]
 
@@ -134,6 +134,13 @@ private struct MediaHomeView: View {
         .background(Color(nsColor: .windowBackgroundColor))
         .sheet(isPresented: $showSettings) { MediaSettingsSheet(model: model) }
         .onAppear { if Tab(rawValue: storedTab) == nil { storedTab = Tab.projects.rawValue } }
+        .task(id: tab) {
+            guard tab == .templates else { return }
+            let cacheURL = model.paths.root.appendingPathComponent("media-studio/template-catalog.json")
+            let language = Locale.current.language.languageCode?.identifier ?? "en"
+            let catalog = await MediaTemplateCatalogClient.load(cacheURL: cacheURL, language: language)
+            templates = catalog.map { (template: $0, canvas: $0.canvas()) }
+        }
         .alert(AppCopy.text("studio.rename"), isPresented: Binding(
             get: { renameTarget != nil },
             set: { if !$0 { renameTarget = nil } }

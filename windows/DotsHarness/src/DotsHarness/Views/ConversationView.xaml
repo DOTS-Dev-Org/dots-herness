@@ -184,9 +184,9 @@
                                                             </ToolTip>
                                                         </Border.ToolTip>
                                 <StackPanel Orientation="Horizontal">
-                                    <Image Width="48" Height="48" Stretch="UniformToFill"
-                                           Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
-                                           Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
+                                    <views:AsyncAttachmentImage Width="48" Height="48" Stretch="UniformToFill"
+                                                                  FilePath="{Binding FilePath}"
+                                                                  Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
                                     <StackPanel Width="150" Margin="6,0,0,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimary}"/>
                                         <TextBlock Text="{Binding Kind}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
@@ -394,7 +394,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Margin="0,0,0,20" MaxWidth="760" HorizontalAlignment="{Binding Kind, Converter={x:Static views:KindAlignment.Instance}}">
+                            <Border Margin="0,0,0,10" MaxWidth="760" HorizontalAlignment="{Binding Kind, Converter={x:Static views:KindAlignment.Instance}}">
                                 <StackPanel>
                                     <Border Margin="0,0,0,6" Padding="10,8" CornerRadius="11"
                                             Background="{DynamicResource PanelBackground}"
@@ -422,7 +422,7 @@
                                             <TextBlock Text="…" HorizontalAlignment="Right"
                                                        Visibility="{Binding Streaming, Converter={x:Static views:BoolToVis.Instance}}"/>
                                         </DockPanel>
-                                        <Border Margin="0,4,0,0" Padding="9,7" CornerRadius="10"
+                                        <Border Margin="0,2,0,0" Padding="9,7" CornerRadius="10"
                                                 Background="{DynamicResource PanelBackground}"
                                                 BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
                                                 Visibility="{Binding ., Converter={x:Static views:ToolActivityVisibility.Instance}}">
@@ -447,7 +447,7 @@
                                                 </StackPanel>
                                             </DockPanel>
                                         </Border>
-                                        <views:MarkdownBody Text="{Binding Text}" Margin="0,6,0,0" TextAlignment="{Binding Kind, Converter={x:Static views:KindTextAlignment.Instance}}"
+                                        <views:MarkdownBody Text="{Binding Text}" Margin="0,3,0,0" TextAlignment="{Binding Kind, Converter={x:Static views:KindTextAlignment.Instance}}"
                                                             TextElement.Foreground="{DynamicResource TextPrimary}"
                                                             Visibility="{Binding ., Converter={x:Static views:MessageBodyVisibility.Instance}}"/>
                                         <Expander IsExpanded="False" Margin="0,6,0,0"
@@ -461,8 +461,8 @@
                                         <TextBlock Text="{Binding ., Converter={x:Static views:RunSummaryLabel.Instance}}" TextWrapping="Wrap" Margin="0,8,0,0"
                                                    Foreground="{DynamicResource TextSecondary}"
                                                    Visibility="{Binding ., Converter={x:Static views:RunSummaryVisibility.Instance}}"/>
-                                        <Image MaxWidth="520" MaxHeight="520" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                               Source="{Binding Media.FilePath, Converter={x:Static views:AttachmentImage.Instance}}"/>
+                                        <views:AsyncAttachmentImage MaxWidth="520" MaxHeight="520" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                                                      FilePath="{Binding Media.FilePath}"/>
                                         <views:AudioPlayerRow Path="{Binding Media.FilePath}" HorizontalAlignment="Left" Margin="0,8,0,0"
                                                              Visibility="{Binding Media.IsAudio, Converter={x:Static views:BoolToVis.Instance}}"/>
                                         <ItemsControl ItemsSource="{Binding Attachments}" Margin="0,8,0,0">
@@ -484,9 +484,9 @@
                                                             </ToolTip>
                                                         </Border.ToolTip>
                                                         <StackPanel Orientation="Horizontal">
-                                                            <Image Width="64" Height="64" Stretch="UniformToFill"
-                                                                   Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
-                                                                   Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
+                                                            <views:AsyncAttachmentImage Width="64" Height="64" Stretch="UniformToFill"
+                                                                                       FilePath="{Binding FilePath}"
+                                                                                       Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
                                                             <views:AudioPlayerRow Path="{Binding FilePath}" VerticalAlignment="Center" Margin="6,0,0,0"
                                                                                 Visibility="{Binding IsAudio, Converter={x:Static views:BoolToVis.Instance}}"/>
                                                             <StackPanel Width="170" Margin="6,0,0,0" VerticalAlignment="Center">
@@ -793,6 +793,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <WrapPanel x:Name="FollowUpReplyButtons" Margin="24,-12,24,12" Visibility="Collapsed"/>
                 <ItemsControl x:Name="PendingMessages" Margin="24,0,24,24" VirtualizingStackPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -840,9 +841,9 @@
                                                         </ToolTip>
                                                     </Border.ToolTip>
                                                     <StackPanel Orientation="Horizontal">
-                                                        <Image Width="64" Height="64" Stretch="UniformToFill"
-                                                               Source="{Binding FilePath, Converter={x:Static views:AttachmentImage.Instance}}"
-                                                               Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
+                                                        <views:AsyncAttachmentImage Width="64" Height="64" Stretch="UniformToFill"
+                                                                                     FilePath="{Binding FilePath}"
+                                                                                     Visibility="{Binding IsImage, Converter={x:Static views:BoolToVis.Instance}}"/>
                                                         <StackPanel Width="170" Margin="6,0,0,0" VerticalAlignment="Center">
                                                             <Button Tag="{Binding}" Click="OnOpenAttachment" Padding="0" Background="Transparent" BorderThickness="0"
                                                                     HorizontalContentAlignment="Left">
